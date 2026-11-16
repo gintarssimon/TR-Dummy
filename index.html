@@ -115,7 +115,10 @@ i, em { font-style: normal; }
 .tri { display: inline-block; width: 0; height: 0; margin-right: 5px; border-left: 4.5px solid transparent; border-right: 4.5px solid transparent; vertical-align: 1px; }
 .tri.up { border-bottom: 8px solid currentColor; }
 .tri.down { border-top: 8px solid currentColor; }
-.chg { font-weight: 700; font-size: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chg { position: relative; display: inline-block; font-weight: 700; font-size: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; cursor: pointer; }
+/* größere Tippfläche für den Wechsel Prozent ↔ € */
+.chg::after, .hero-delta[data-a]::after { content: ''; position: absolute; inset: -14px -10px -14px -14px; }
+.hero-delta[data-a] { position: relative; cursor: pointer; }
 .chg.up, .green { color: var(--green); }
 .chg.down { color: var(--red); }
 
@@ -1567,7 +1570,7 @@ const TF_CFG = {
 
 /**
  * Erzeugt eine Kurve, die exakt beim aktuellen Wert endet.
- * opts.pct: feste Rendite für den Zeitraum, opts.span: Tage, opts.flatHead: flacher Anfang (wie ein frisch bespartes Depot)
+ * opts.pct: feste Rendite für den Zeitraum, opts.span: Tage
  */
 function genSeries(key, tf, endValue, opts) {
   opts = opts || {};
@@ -1582,17 +1585,15 @@ function genSeries(key, tf, endValue, opts) {
   const walk = [0];
   for (let i = 1; i < n; i++) walk.push(walk[i - 1] + R.normal());
   const lastW = walk[n - 1];
-  const bridge = walk.map((v, i) => v - (lastW * i) / (n - 1));
+  const raw = walk.map((v, i) => v - (lastW * i) / (n - 1));
+  // leicht glätten: der Verlauf bleibt lebendig, zittert aber nicht von Punkt zu Punkt
+  const bridge = raw.map((v, i) => (i === 0 || i === n - 1 ? v : 0.25 * raw[i - 1] + 0.5 * v + 0.25 * raw[i + 1]));
   const maxAbs = Math.max.apply(null, bridge.map(Math.abs)) || 1;
   const amp = R.f(0.3, 0.62) * Math.max(Math.abs(end - start), end * cfg.floor);
   const k = R.f(0.75, 2.1);
-  const head = opts.flatHead ? R.f(0.14, 0.3) : 0;
   const values = bridge.map((b, i) => {
     const t = i / (n - 1);
-    if (t < head) return start + amp * 0.03 * Math.sin(i * 1.7);
-    const u = (t - head) / (1 - head);
-    const fade = Math.min(1, u * 6);
-    return Math.max(end * 0.02, start + (end - start) * Math.pow(u, k) + ((amp * b) / maxAbs) * fade);
+    return Math.max(end * 0.02, start + (end - start) * Math.pow(t, k) + (amp * b) / maxAbs);
   });
   values[n - 1] = end;
   const now = Date.now();
@@ -1608,7 +1609,7 @@ function pfSeries(pfAcc, tf) {
   let pct = null;
   if (tf === 'max') pct = invested > 0 ? (total / invested - 1) * 100 : 0;
   if (tf === 'd') pct = total > 0 ? sum(pos, (p) => p.value * S.market[p.iid].day) / total : 0;
-  return genSeries('pf-' + pfAcc, tf, total, { pct, span: tf === 'max' ? S.pfMaxDays : null, flatHead: tf === 'max' });
+  return genSeries('pf-' + pfAcc, tf, total, { pct, span: tf === 'max' ? S.pfMaxDays : null });
 }
 
 function insSeries(iid, tf) {
@@ -1626,9 +1627,14 @@ function buildLine(ys, xf) {
   let d = '';
   const n = ys.length;
   const w = CH_W * (xf || 1);
-  for (let i = 0; i < n; i++) d += (i ? 'L' : 'M') + ((i / (n - 1)) * w).toFixed(1) + ' ' + ys[i].toFixed(1);
-  return d;
+  const x = (i) => (i / (n - 1)) * w;
+  // Kurve durch die Mittelpunkte benachbarter Punkte: weiche Bögen statt Zacken
+  d = 'M0 ' + ys[0].toFixed(1);
+  for (let i = 1; i < n - 1; i++) d += 'Q' + x(i).toFixed(1) + ' ' + ys[i].toFixed(1) + ' ' + ((x(i) + x(i + 1)) / 2).toFixed(1) + ' ' + ((ys[i] + ys[i + 1]) / 2).toFixed(1);
+  return d + 'L' + x(n - 1).toFixed(1) + ' ' + ys[n - 1].toFixed(1);
 }
+/** y-Position der geglätteten Linie am Punkt i (für den Cursor beim Scrubben). */
+const lineY = (ys, i) => (i <= 0 || i >= ys.length - 1 ? ys[clamp(i, 0, ys.length - 1)] : 0.125 * ys[i - 1] + 0.75 * ys[i] + 0.125 * ys[i + 1]);
 
 function chartHTML(series, cid) {
   const v = series.values;
@@ -1693,8 +1699,11 @@ function chartLabelDate(ts, tf) {
 }
 
 const tri = (up) => `<i class="tri ${up ? 'up' : 'down'}"></i>`;
-const deltaHTML = (pct) => tri(pct >= 0) + pct2(pct);
-const chgHTML = (pct) => `<span class="chg ${pct >= 0 ? 'up' : 'down'}">${deltaHTML(pct)}</span>`;
+const fmtChange = (v) => (v !== 0 && Math.abs(v) < 0.1 ? new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Math.abs(v)) + NBSP + '€' : eurAbs(v));
+/** Veränderung als Prozent oder – wenn umgeschaltet (ui.abs) und ein Betrag bekannt ist – als absoluter Wert in €. */
+const deltaHTML = (pct, abs) => (ui.abs && abs !== undefined && abs !== null ? tri(abs >= 0) + fmtChange(abs) : tri(pct >= 0) + pct2(pct));
+const chgHTML = (pct, abs) => `<span class="chg ${pct >= 0 ? 'up' : 'down'}" data-a="toggleAbs">${deltaHTML(pct, abs)}</span>`;
+const dayAbs = (iid) => S.market[iid].price - S.market[iid].price / (1 + S.market[iid].day / 100);
 
 /** Scrubbing: Finger/Maus auf dem Chart zeigt Wert, Rendite und Datum des Punkts. */
 function bindCharts(root) {
@@ -1710,13 +1719,13 @@ function bindCharts(root) {
     const cur = el.querySelector('.ch-cursor');
     cur.hidden = false;
     cur.style.left = (i / (c.series.values.length - 1)) * c.xf * 100 + '%';
-    cur.firstElementChild.style.top = (c.ys[i] / CH_H) * 100 + '%';
+    cur.firstElementChild.style.top = (lineY(c.ys, i) / CH_H) * 100 + '%';
     if (!scope) return;
     const amount = scope.querySelector('[data-chart-amount]');
     const delta = scope.querySelector('[data-chart-delta]');
     const date = scope.querySelector('[data-chart-date]');
     if (amount) amount.textContent = eur(c.series.real ? val : 0);
-    if (delta) delta.innerHTML = deltaHTML((val / c.series.base - 1) * 100);
+    if (delta) delta.innerHTML = deltaHTML((val / c.series.base - 1) * 100, c.series.real ? val - c.series.base : 0);
     if (date) date.textContent = chartLabelDate(c.series.dates[i], c.series.tf);
   };
   const reset = (el) => {
@@ -1729,7 +1738,7 @@ function bindCharts(root) {
     const delta = scope.querySelector('[data-chart-delta]');
     const date = scope.querySelector('[data-chart-date]');
     if (amount) amount.textContent = eur(c.series.real ? v[v.length - 1] : 0);
-    if (delta) delta.innerHTML = deltaHTML(c.series.pct);
+    if (delta) delta.innerHTML = deltaHTML(c.series.pct, c.series.real ? v[v.length - 1] - c.series.base : 0);
     if (date) date.textContent = '';
   };
   root.addEventListener('pointerdown', (e) => {
@@ -1792,6 +1801,7 @@ const ui = {
   cashAcc: 'all',
   tf: 'max',
   sort: 'buy',
+  abs: false, // Veränderungen als absolute €-Werte statt in Prozent
   sheets: [],
 };
 
@@ -1922,7 +1932,7 @@ function positionRow(p) {
   return `<button class="row" data-key="pos-${ins.id}" data-a="instrument" data-iid="${ins.id}">
     <span class="row-ic">${insIcon(ins)}</span>
     <span class="row-main"><b>${esc(ins.name)}</b><small>${num(p.value)}</small></span>
-    <span class="row-end">${chgHTML(pct)}</span>
+    <span class="row-end">${chgHTML(pct, ui.sort === 'buy' ? p.value - p.invested : p.value - p.value / (1 + pct / 100))}</span>
   </button>`;
 }
 
@@ -1945,7 +1955,7 @@ function viewPortfolio() {
   const series = pfSeries(A.id, ui.tf);
   return `<div data-chart-root>
       <div class="hero">${label}
-        <div class="hero-line">${num(total, 'hero-amount', 'data-chart-amount')}<span class="hero-delta" data-chart-delta>${deltaHTML(series.pct)}</span><span class="hero-date" data-chart-date></span></div>
+        <div class="hero-line">${num(total, 'hero-amount', 'data-chart-amount')}<span class="hero-delta" data-chart-delta data-a="toggleAbs">${deltaHTML(series.pct, total - series.base)}</span><span class="hero-date" data-chart-date></span></div>
       </div>
       ${tfHTML(ui.tf, 'tf')}
       ${chartHTML(series, 'pf')}
@@ -2682,7 +2692,7 @@ function insRow(ins, action, slim) {
   return `<button class="row ${slim ? 'slim' : ''}" data-key="ins-${ins.id}" data-a="${action || 'searchPick'}" data-iid="${ins.id}">
     <span class="row-ic">${insIcon(ins)}</span>
     <span class="row-main"><b>${esc(ins.name)}</b>${slim ? '' : `<small>${eur(S.market[ins.id].price)}</small>`}</span>
-    <span class="row-end">${chgHTML(S.market[ins.id].day)}</span>
+    <span class="row-end">${chgHTML(S.market[ins.id].day, dayAbs(ins.id))}</span>
   </button>`;
 }
 
@@ -2711,7 +2721,7 @@ SHEETS.search = {
       return `${shTitle(p.title || 'Suche')}
         <div class="sec"><div class="sec-link"><h2>Top movers</h2>${ICON.chevRight}</div></div>
         <div class="cards movers" data-scroll="movers">${movers
-          .map((i) => `<button class="card" data-a="searchPick" data-iid="${i.id}">${insIcon(i)}<span class="card-v">${esc(i.name)}</span>${chgHTML(S.market[i.id].day)}</button>`)
+          .map((i) => `<button class="card" data-a="searchPick" data-iid="${i.id}">${insIcon(i)}<span class="card-v">${esc(i.name)}</span>${chgHTML(S.market[i.id].day, dayAbs(i.id))}</button>`)
           .join('')}</div>
         ${secHTML('Beliebt')}
         <div class="chips wrap">${popular.map((i) => `<button class="chip ins" data-a="searchPick" data-iid="${i.id}">${insIcon(i)}${esc(i.name)}</button>`).join('')}</div>
@@ -2751,14 +2761,14 @@ SHEETS.instrument = {
       <div data-chart-root>
         <div class="ins-head">${insIcon(ins, 'md')}<button class="ins-add ${wl ? 'on' : ''}" data-a="toggleWatch" data-iid="${ins.id}" aria-label="Watchlist">${wl ? ICON.check : ICON.plus}</button></div>
         <div class="hero-label ins-name"><span>${esc(ins.name)}</span></div>
-        <div class="hero-line pad"><span class="hero-amount" data-chart-amount>${eur(m.price)}</span><span class="hero-delta acc" data-chart-delta>${deltaHTML(series.pct)}</span><span class="hero-date" data-chart-date></span></div>
+        <div class="hero-line pad"><span class="hero-amount" data-chart-amount>${eur(m.price)}</span><span class="hero-delta acc" data-chart-delta data-a="toggleAbs">${deltaHTML(series.pct, m.price - series.base)}</span><span class="hero-date" data-chart-date></span></div>
         ${tfHTML(p.tf, 'insTf')}
         <div class="closed ${ms.open ? 'hide' : ''}">${ICON.moon}<span>Handelsplatz ist geschlossen</span></div>
         ${chartHTML(series, 'ins' + sheet.key)}
       </div>
       <div class="cards" data-scroll="inscards">
         <button class="card" data-a="trade" data-side="buy" data-iid="${ins.id}"><span class="card-l">Position</span>${pos ? `<span class="card-v">${num(pos.value)}</span>` : `<i class="card-plus">${ICON.plus}</i>`}</button>
-        <div class="card"><span class="card-l">${pos ? 'Performance' : '1 Jahr'}</span><span class="card-v">${chgHTML(perf)}</span></div>
+        <button class="card" data-a="toggleAbs"><span class="card-l">${pos ? 'Performance' : '1 Jahr'}</span><span class="card-v">${chgHTML(perf, pos ? pos.value - pos.invested : m.price - m.price / (1 + perf / 100))}</span></button>
         <button class="card" data-a="toast" data-msg="Preisalarme: in der Demo nicht verfügbar"><span class="card-l">Aktivität</span><i class="card-bell">${ICON.g_bell}</i></button>
         <button class="card" data-a="insPlan" data-iid="${ins.id}"><span class="card-l">Sparplan</span>${plan ? `<span class="card-v">${eurCompact(plan.amount)}</span>` : `<i class="card-plus">${ICON.plus}</i>`}</button>
       </div>
@@ -2783,7 +2793,7 @@ SHEETS.instrument = {
            ${f.events.map((e) => `<div class="row"><span class="row-ic ev"><i class="ev-date"><b>${String(new Date(e.date).getDate()).padStart(2, '0')}</b>${MON_SHORT[new Date(e.date).getMonth()].replace('.', '')}</i></span><span class="row-main"><b>${e.title}</b><small>${inDaysLabel(e.date, now)} · ${e.sub}</small></span></div>`).join('')}`
         : ''}
       ${secHTML('User besitzen auch')}
-      <div class="cards movers" data-scroll="peers${sheet.key}">${f.peers.map((id) => `<button class="card" data-a="instrument" data-iid="${id}">${insIcon(INSTR[id])}<span class="card-v">${esc(INSTR[id].name)}</span>${chgHTML(S.market[id].day)}</button>`).join('')}</div>
+      <div class="cards movers" data-scroll="peers${sheet.key}">${f.peers.map((id) => `<button class="card" data-a="instrument" data-iid="${id}">${insIcon(INSTR[id])}<span class="card-v">${esc(INSTR[id].name)}</span>${chgHTML(S.market[id].day, dayAbs(id))}</button>`).join('')}</div>
       <p class="legal">Kurse, Kennzahlen, Nachrichten und Termine sind zufällig erzeugt und dienen nur der Demonstration.</p>
     </div>`;
   },
@@ -3279,7 +3289,23 @@ function pulse(sheet, sel) {
   if (el && el.animate && !reduceMotion()) el.animate([{ transform: 'scale(1.05)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
 }
 
+const LS_ABS = 'cash-unterkonten-abs';
+
 const ACTIONS = {
+  /** Tippen auf eine Veränderung schaltet überall zwischen Prozent und absoluten €-Werten um. */
+  toggleAbs() {
+    ui.abs = !ui.abs;
+    try {
+      localStorage.setItem(LS_ABS, ui.abs ? '1' : '0');
+    } catch (e) {
+      /* ignore */
+    }
+    render();
+    if (reduceMotion()) return;
+    document.querySelectorAll('#app [data-a="toggleAbs"]:not(.card)').forEach((el) => {
+      if (el.animate && !el.closest('.view-ghost')) el.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 340, easing: EASE });
+    });
+  },
   tab(d) {
     if (ui.tab === d.tab) {
       $view.scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
@@ -3785,6 +3811,11 @@ function init() {
   $sheets = document.getElementById('sheets');
   $toast = document.getElementById('toast');
   loadState();
+  try {
+    ui.abs = localStorage.getItem(LS_ABS) === '1';
+  } catch (e) {
+    /* ignore */
+  }
   mountLogoSprite();
   mountMain();
   bindEvents();

@@ -343,7 +343,23 @@ function pulse(sheet, sel) {
   if (el && el.animate && !reduceMotion()) el.animate([{ transform: 'scale(1.05)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
 }
 
+const LS_ABS = 'cash-unterkonten-abs';
+
 const ACTIONS = {
+  /** Tippen auf eine Veränderung schaltet überall zwischen Prozent und absoluten €-Werten um. */
+  toggleAbs() {
+    ui.abs = !ui.abs;
+    try {
+      localStorage.setItem(LS_ABS, ui.abs ? '1' : '0');
+    } catch (e) {
+      /* ignore */
+    }
+    render();
+    if (reduceMotion()) return;
+    document.querySelectorAll('#app [data-a="toggleAbs"]:not(.card)').forEach((el) => {
+      if (el.animate && !el.closest('.view-ghost')) el.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 340, easing: EASE });
+    });
+  },
   tab(d) {
     if (ui.tab === d.tab) {
       $view.scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
@@ -849,6 +865,11 @@ function init() {
   $sheets = document.getElementById('sheets');
   $toast = document.getElementById('toast');
   loadState();
+  try {
+    ui.abs = localStorage.getItem(LS_ABS) === '1';
+  } catch (e) {
+    /* ignore */
+  }
   mountLogoSprite();
   mountMain();
   bindEvents();

@@ -15,7 +15,7 @@ const TF_CFG = {
 
 /**
  * Erzeugt eine Kurve, die exakt beim aktuellen Wert endet.
- * opts.pct: feste Rendite für den Zeitraum, opts.span: Tage, opts.flatHead: flacher Anfang (wie ein frisch bespartes Depot)
+ * opts.pct: feste Rendite für den Zeitraum, opts.span: Tage
  */
 function genSeries(key, tf, endValue, opts) {
   opts = opts || {};
@@ -30,17 +30,15 @@ function genSeries(key, tf, endValue, opts) {
   const walk = [0];
   for (let i = 1; i < n; i++) walk.push(walk[i - 1] + R.normal());
   const lastW = walk[n - 1];
-  const bridge = walk.map((v, i) => v - (lastW * i) / (n - 1));
+  const raw = walk.map((v, i) => v - (lastW * i) / (n - 1));
+  // leicht glätten: der Verlauf bleibt lebendig, zittert aber nicht von Punkt zu Punkt
+  const bridge = raw.map((v, i) => (i === 0 || i === n - 1 ? v : 0.25 * raw[i - 1] + 0.5 * v + 0.25 * raw[i + 1]));
   const maxAbs = Math.max.apply(null, bridge.map(Math.abs)) || 1;
   const amp = R.f(0.3, 0.62) * Math.max(Math.abs(end - start), end * cfg.floor);
   const k = R.f(0.75, 2.1);
-  const head = opts.flatHead ? R.f(0.14, 0.3) : 0;
   const values = bridge.map((b, i) => {
     const t = i / (n - 1);
-    if (t < head) return start + amp * 0.03 * Math.sin(i * 1.7);
-    const u = (t - head) / (1 - head);
-    const fade = Math.min(1, u * 6);
-    return Math.max(end * 0.02, start + (end - start) * Math.pow(u, k) + ((amp * b) / maxAbs) * fade);
+    return Math.max(end * 0.02, start + (end - start) * Math.pow(t, k) + (amp * b) / maxAbs);
   });
   values[n - 1] = end;
   const now = Date.now();
@@ -56,7 +54,7 @@ function pfSeries(pfAcc, tf) {
   let pct = null;
   if (tf === 'max') pct = invested > 0 ? (total / invested - 1) * 100 : 0;
   if (tf === 'd') pct = total > 0 ? sum(pos, (p) => p.value * S.market[p.iid].day) / total : 0;
-  return genSeries('pf-' + pfAcc, tf, total, { pct, span: tf === 'max' ? S.pfMaxDays : null, flatHead: tf === 'max' });
+  return genSeries('pf-' + pfAcc, tf, total, { pct, span: tf === 'max' ? S.pfMaxDays : null });
 }
 
 function insSeries(iid, tf) {
@@ -74,9 +72,14 @@ function buildLine(ys, xf) {
   let d = '';
   const n = ys.length;
   const w = CH_W * (xf || 1);
-  for (let i = 0; i < n; i++) d += (i ? 'L' : 'M') + ((i / (n - 1)) * w).toFixed(1) + ' ' + ys[i].toFixed(1);
-  return d;
+  const x = (i) => (i / (n - 1)) * w;
+  // Kurve durch die Mittelpunkte benachbarter Punkte: weiche Bögen statt Zacken
+  d = 'M0 ' + ys[0].toFixed(1);
+  for (let i = 1; i < n - 1; i++) d += 'Q' + x(i).toFixed(1) + ' ' + ys[i].toFixed(1) + ' ' + ((x(i) + x(i + 1)) / 2).toFixed(1) + ' ' + ((ys[i] + ys[i + 1]) / 2).toFixed(1);
+  return d + 'L' + x(n - 1).toFixed(1) + ' ' + ys[n - 1].toFixed(1);
 }
+/** y-Position der geglätteten Linie am Punkt i (für den Cursor beim Scrubben). */
+const lineY = (ys, i) => (i <= 0 || i >= ys.length - 1 ? ys[clamp(i, 0, ys.length - 1)] : 0.125 * ys[i - 1] + 0.75 * ys[i] + 0.125 * ys[i + 1]);
 
 function chartHTML(series, cid) {
   const v = series.values;
@@ -141,8 +144,11 @@ function chartLabelDate(ts, tf) {
 }
 
 const tri = (up) => `<i class="tri ${up ? 'up' : 'down'}"></i>`;
-const deltaHTML = (pct) => tri(pct >= 0) + pct2(pct);
-const chgHTML = (pct) => `<span class="chg ${pct >= 0 ? 'up' : 'down'}">${deltaHTML(pct)}</span>`;
+const fmtChange = (v) => (v !== 0 && Math.abs(v) < 0.1 ? new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Math.abs(v)) + NBSP + '€' : eurAbs(v));
+/** Veränderung als Prozent oder – wenn umgeschaltet (ui.abs) und ein Betrag bekannt ist – als absoluter Wert in €. */
+const deltaHTML = (pct, abs) => (ui.abs && abs !== undefined && abs !== null ? tri(abs >= 0) + fmtChange(abs) : tri(pct >= 0) + pct2(pct));
+const chgHTML = (pct, abs) => `<span class="chg ${pct >= 0 ? 'up' : 'down'}" data-a="toggleAbs">${deltaHTML(pct, abs)}</span>`;
+const dayAbs = (iid) => S.market[iid].price - S.market[iid].price / (1 + S.market[iid].day / 100);
 
 /** Scrubbing: Finger/Maus auf dem Chart zeigt Wert, Rendite und Datum des Punkts. */
 function bindCharts(root) {
@@ -158,13 +164,13 @@ function bindCharts(root) {
     const cur = el.querySelector('.ch-cursor');
     cur.hidden = false;
     cur.style.left = (i / (c.series.values.length - 1)) * c.xf * 100 + '%';
-    cur.firstElementChild.style.top = (c.ys[i] / CH_H) * 100 + '%';
+    cur.firstElementChild.style.top = (lineY(c.ys, i) / CH_H) * 100 + '%';
     if (!scope) return;
     const amount = scope.querySelector('[data-chart-amount]');
     const delta = scope.querySelector('[data-chart-delta]');
     const date = scope.querySelector('[data-chart-date]');
     if (amount) amount.textContent = eur(c.series.real ? val : 0);
-    if (delta) delta.innerHTML = deltaHTML((val / c.series.base - 1) * 100);
+    if (delta) delta.innerHTML = deltaHTML((val / c.series.base - 1) * 100, c.series.real ? val - c.series.base : 0);
     if (date) date.textContent = chartLabelDate(c.series.dates[i], c.series.tf);
   };
   const reset = (el) => {
@@ -177,7 +183,7 @@ function bindCharts(root) {
     const delta = scope.querySelector('[data-chart-delta]');
     const date = scope.querySelector('[data-chart-date]');
     if (amount) amount.textContent = eur(c.series.real ? v[v.length - 1] : 0);
-    if (delta) delta.innerHTML = deltaHTML(c.series.pct);
+    if (delta) delta.innerHTML = deltaHTML(c.series.pct, c.series.real ? v[v.length - 1] - c.series.base : 0);
     if (date) date.textContent = '';
   };
   root.addEventListener('pointerdown', (e) => {

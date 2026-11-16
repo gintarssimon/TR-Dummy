@@ -100,7 +100,10 @@ i, em { font-style: normal; }
 .tri { display: inline-block; width: 0; height: 0; margin-right: 5px; border-left: 4.5px solid transparent; border-right: 4.5px solid transparent; vertical-align: 1px; }
 .tri.up { border-bottom: 8px solid currentColor; }
 .tri.down { border-top: 8px solid currentColor; }
-.chg { font-weight: 700; font-size: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chg { position: relative; display: inline-block; font-weight: 700; font-size: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; cursor: pointer; }
+/* größere Tippfläche für den Wechsel Prozent ↔ € */
+.chg::after, .hero-delta[data-a]::after { content: ''; position: absolute; inset: -14px -10px -14px -14px; }
+.hero-delta[data-a] { position: relative; cursor: pointer; }
 .chg.up, .green { color: var(--green); }
 .chg.down { color: var(--red); }
 

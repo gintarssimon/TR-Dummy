@@ -590,7 +590,7 @@ function insRow(ins, action, slim) {
   return `<button class="row ${slim ? 'slim' : ''}" data-key="ins-${ins.id}" data-a="${action || 'searchPick'}" data-iid="${ins.id}">
     <span class="row-ic">${insIcon(ins)}</span>
     <span class="row-main"><b>${esc(ins.name)}</b>${slim ? '' : `<small>${eur(S.market[ins.id].price)}</small>`}</span>
-    <span class="row-end">${chgHTML(S.market[ins.id].day)}</span>
+    <span class="row-end">${chgHTML(S.market[ins.id].day, dayAbs(ins.id))}</span>
   </button>`;
 }
 
@@ -619,7 +619,7 @@ SHEETS.search = {
       return `${shTitle(p.title || 'Suche')}
         <div class="sec"><div class="sec-link"><h2>Top movers</h2>${ICON.chevRight}</div></div>
         <div class="cards movers" data-scroll="movers">${movers
-          .map((i) => `<button class="card" data-a="searchPick" data-iid="${i.id}">${insIcon(i)}<span class="card-v">${esc(i.name)}</span>${chgHTML(S.market[i.id].day)}</button>`)
+          .map((i) => `<button class="card" data-a="searchPick" data-iid="${i.id}">${insIcon(i)}<span class="card-v">${esc(i.name)}</span>${chgHTML(S.market[i.id].day, dayAbs(i.id))}</button>`)
           .join('')}</div>
         ${secHTML('Beliebt')}
         <div class="chips wrap">${popular.map((i) => `<button class="chip ins" data-a="searchPick" data-iid="${i.id}">${insIcon(i)}${esc(i.name)}</button>`).join('')}</div>
@@ -659,14 +659,14 @@ SHEETS.instrument = {
       <div data-chart-root>
         <div class="ins-head">${insIcon(ins, 'md')}<button class="ins-add ${wl ? 'on' : ''}" data-a="toggleWatch" data-iid="${ins.id}" aria-label="Watchlist">${wl ? ICON.check : ICON.plus}</button></div>
         <div class="hero-label ins-name"><span>${esc(ins.name)}</span></div>
-        <div class="hero-line pad"><span class="hero-amount" data-chart-amount>${eur(m.price)}</span><span class="hero-delta acc" data-chart-delta>${deltaHTML(series.pct)}</span><span class="hero-date" data-chart-date></span></div>
+        <div class="hero-line pad"><span class="hero-amount" data-chart-amount>${eur(m.price)}</span><span class="hero-delta acc" data-chart-delta data-a="toggleAbs">${deltaHTML(series.pct, m.price - series.base)}</span><span class="hero-date" data-chart-date></span></div>
         ${tfHTML(p.tf, 'insTf')}
         <div class="closed ${ms.open ? 'hide' : ''}">${ICON.moon}<span>Handelsplatz ist geschlossen</span></div>
         ${chartHTML(series, 'ins' + sheet.key)}
       </div>
       <div class="cards" data-scroll="inscards">
         <button class="card" data-a="trade" data-side="buy" data-iid="${ins.id}"><span class="card-l">Position</span>${pos ? `<span class="card-v">${num(pos.value)}</span>` : `<i class="card-plus">${ICON.plus}</i>`}</button>
-        <div class="card"><span class="card-l">${pos ? 'Performance' : '1 Jahr'}</span><span class="card-v">${chgHTML(perf)}</span></div>
+        <button class="card" data-a="toggleAbs"><span class="card-l">${pos ? 'Performance' : '1 Jahr'}</span><span class="card-v">${chgHTML(perf, pos ? pos.value - pos.invested : m.price - m.price / (1 + perf / 100))}</span></button>
         <button class="card" data-a="toast" data-msg="Preisalarme: in der Demo nicht verfügbar"><span class="card-l">Aktivität</span><i class="card-bell">${ICON.g_bell}</i></button>
         <button class="card" data-a="insPlan" data-iid="${ins.id}"><span class="card-l">Sparplan</span>${plan ? `<span class="card-v">${eurCompact(plan.amount)}</span>` : `<i class="card-plus">${ICON.plus}</i>`}</button>
       </div>
@@ -691,7 +691,7 @@ SHEETS.instrument = {
            ${f.events.map((e) => `<div class="row"><span class="row-ic ev"><i class="ev-date"><b>${String(new Date(e.date).getDate()).padStart(2, '0')}</b>${MON_SHORT[new Date(e.date).getMonth()].replace('.', '')}</i></span><span class="row-main"><b>${e.title}</b><small>${inDaysLabel(e.date, now)} · ${e.sub}</small></span></div>`).join('')}`
         : ''}
       ${secHTML('User besitzen auch')}
-      <div class="cards movers" data-scroll="peers${sheet.key}">${f.peers.map((id) => `<button class="card" data-a="instrument" data-iid="${id}">${insIcon(INSTR[id])}<span class="card-v">${esc(INSTR[id].name)}</span>${chgHTML(S.market[id].day)}</button>`).join('')}</div>
+      <div class="cards movers" data-scroll="peers${sheet.key}">${f.peers.map((id) => `<button class="card" data-a="instrument" data-iid="${id}">${insIcon(INSTR[id])}<span class="card-v">${esc(INSTR[id].name)}</span>${chgHTML(S.market[id].day, dayAbs(id))}</button>`).join('')}</div>
       <p class="legal">Kurse, Kennzahlen, Nachrichten und Termine sind zufällig erzeugt und dienen nur der Demonstration.</p>
     </div>`;
   },

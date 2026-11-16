@@ -50,6 +50,10 @@ Der Rest der App ist ebenfalls klickbar, damit der Kontext stimmt: Ladescreen, P
 - Kennzahlen, Nachrichten und Termine in der Einzelwert-Ansicht sind Platzhalter und frei erfunden; nur die Kurzbeschreibungen der Unternehmen sind allgemein gehalten und sachlich.
 - Schrift: [Inter](https://rsms.me/inter/) (SIL Open Font License), als Datei eingebettet, damit die App auf jedem Gerät gleich aussieht.
 
+## Prozent oder Euro
+
+Tippen auf eine Veränderung (z. B. „▲ 15,26 %“ im Portfolio, in einer Depotzeile, in der Suche oder in der Einzelwert-Ansicht) schaltet überall zwischen Prozent und absolutem €-Wert um. Die Wahl bleibt gespeichert und gilt auch beim Scrubben über den Chart.
+
 ## Animationen
 
 Zustandswechsel werden nicht hart umgeschaltet: Ansichten gleiten ineinander (Tabs seitlich, Konten in die Tiefe), Sheets fahren weich ein und die Ebene dahinter tritt zurück, der Chart morpht zwischen Zeiträumen, Beträge zählen hoch, Schalter, Chips, Ringe, Sparziel-Balken und Statistik-Bubbles laufen in ihren neuen Zustand. Zwischen Portfolio und Cash kann man wischen, Sheets lassen sich nach unten wegziehen. Bei „Bewegung reduzieren“ im System sind die Animationen aus.

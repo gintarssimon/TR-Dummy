@@ -9,6 +9,7 @@ const ui = {
   cashAcc: 'all',
   tf: 'max',
   sort: 'buy',
+  abs: false, // Veränderungen als absolute €-Werte statt in Prozent
   sheets: [],
 };
 
@@ -139,7 +140,7 @@ function positionRow(p) {
   return `<button class="row" data-key="pos-${ins.id}" data-a="instrument" data-iid="${ins.id}">
     <span class="row-ic">${insIcon(ins)}</span>
     <span class="row-main"><b>${esc(ins.name)}</b><small>${num(p.value)}</small></span>
-    <span class="row-end">${chgHTML(pct)}</span>
+    <span class="row-end">${chgHTML(pct, ui.sort === 'buy' ? p.value - p.invested : p.value - p.value / (1 + pct / 100))}</span>
   </button>`;
 }
 
@@ -162,7 +163,7 @@ function viewPortfolio() {
   const series = pfSeries(A.id, ui.tf);
   return `<div data-chart-root>
       <div class="hero">${label}
-        <div class="hero-line">${num(total, 'hero-amount', 'data-chart-amount')}<span class="hero-delta" data-chart-delta>${deltaHTML(series.pct)}</span><span class="hero-date" data-chart-date></span></div>
+        <div class="hero-line">${num(total, 'hero-amount', 'data-chart-amount')}<span class="hero-delta" data-chart-delta data-a="toggleAbs">${deltaHTML(series.pct, total - series.base)}</span><span class="hero-date" data-chart-date></span></div>
       </div>
       ${tfHTML(ui.tf, 'tf')}
       ${chartHTML(series, 'pf')}
