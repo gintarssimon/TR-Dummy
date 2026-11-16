@@ -36,7 +36,7 @@ function insIcon(ins, cls) {
 }
 
 function accAvatar(a, cls) {
-  return `<span class="acc-av ${a.main ? 'main' : ''} ${cls || ''}" style="--c:${a.color}">${a.main ? '<i class="av-eur">€</i>' : accIconSVG(a.icon)}</span>`;
+  return `<span class="tx-ic acc ${cls || ''}">${a.main ? '<i class="av-eur">€</i>' : accIconSVG(a.icon)}</span>`;
 }
 
 function brandIcon(slug) {
@@ -90,16 +90,16 @@ function upcomingSummaryRow(view) {
 function accountRow(a, total, action) {
   const share = total > 0 ? a.balance / total : 0;
   return `<button class="row" data-key="acc-${a.id}" data-a="${action || 'cashAcc'}" data-id="${a.id}">
-    <span class="row-ic">${accAvatar(a)}</span>
-    <span class="row-main"><b>${esc(a.name)}</b><small>${num(a.balance)}${a.goal ? ' · Ziel ' + eur0(a.goal) : ''}</small></span>
-    <span class="row-end split"><b>${pct0(share * 100)}</b>${ringSVG(share, a.main ? '#ffffff' : a.color)}</span>
+    <span class="row-ic nav">${accAvatar(a)}</span>
+    <span class="row-main"><b>${esc(a.name)}</b><small>${num(a.balance)}</small></span>
+    <span class="row-end split"><b>${pct0(share * 100)}</b>${ringSVG(share, '#ffffff')}</span>
   </button>`;
 }
 
 function goalBar(a) {
   if (!a.goal) return '';
   const p = clamp(a.balance / a.goal, 0, 1);
-  return `<div class="goal"><div class="goal-track"><i style="width:${(p * 100).toFixed(1)}%;background:${a.color}"></i></div>
+  return `<div class="goal"><div class="goal-track"><i style="width:${(p * 100).toFixed(1)}%"></i></div>
     <div class="goal-meta"><span>${pct0(Math.floor(p * 100))} von ${eur0(a.goal)}</span><span>${p >= 1 ? 'Ziel erreicht' : 'Noch ' + eur(a.goal - a.balance)}</span></div></div>`;
 }
 
@@ -170,7 +170,7 @@ function viewPortfolio() {
     ${pfCardsHTML()}
     <div class="sec"><h2>Investments</h2><button class="sec-btn" data-a="sort">${ui.sort === 'buy' ? 'Seit Kauf' : 'Tagestrend'}${ICON.chevSmall}</button></div>
     ${pos.length ? pos.map(positionRow).join('') : '<p class="empty">Noch keine Investments. Über die Suche findest du Aktien und ETFs.</p>'}
-    <p class="legal">Die angegebenen Kurse und die Renditeberechnung beziehen sich auf den unmittelbar vorhergehenden Geldkurs der <b>Handelspartner</b>. Die Wertentwicklung in der Vergangenheit lässt keinen Rückschluss auf zukünftige Ergebnisse zu.</p>`;
+    <p class="legal">Die angegebenen Kurse und die Renditeberechnung beziehen sich auf den unmittelbar vorhergehenden Geldkurs der <b>Handelspartner</b> von Trade Republic. Die Wertentwicklung in der Vergangenheit lässt keinen Rückschluss auf zukünftige Ergebnisse zu.</p>`;
 }
 
 function viewPortfolioOverview() {
@@ -246,7 +246,7 @@ function viewCashOverview() {
        </button>`;
   return `<div class="hero">
       <div class="hero-label"><span>Verfügbar</span></div>
-      <div class="hero-line">${num(total, 'hero-amount')}${subs.length ? `<span class="hero-note">${S.accounts.length} Konten</span>` : ''}</div>
+      <div class="hero-line">${num(total, 'hero-amount')}</div>
     </div>
     ${cashCardsMain()}
     ${konten}
@@ -258,7 +258,7 @@ function viewCashAccount(a) {
   const label = `<button class="hero-label" data-a="cashAcc" data-id="all"><span>${esc(a.name)}</span><span class="hero-chev">${ICON.chevDown}</span></button>`;
   const empty = !a.main && !txFor(a.id).length;
   return `<div class="hero">${label}
-      <div class="hero-line">${num(a.balance, 'hero-amount')}<span class="hero-note">${a.main ? 'Verfügbar' : 'Unterkonto'}</span></div>
+      <div class="hero-line">${num(a.balance, 'hero-amount')}</div>
       ${goalBar(a)}
     </div>
     ${a.main ? cashCardsMain() : cashCardsSub(a)}
@@ -274,7 +274,7 @@ function viewCashAccount(a) {
 
 function serviceRow(icon, title, sub, action, extra, cls) {
   return `<button class="row ${cls || ''}" data-a="${action}" ${extra || ''}>
-    <span class="row-ic"><span class="tx-ic ${cls === 'blue' ? 'blue' : ''}">${ICON[icon]}</span></span>
+    <span class="row-ic nav"><span class="tx-ic ${cls === 'blue' ? 'blue' : ''}">${ICON[icon]}</span></span>
     <span class="row-main"><b>${title}</b><small>${sub}</small></span>
   </button>`;
 }

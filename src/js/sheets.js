@@ -11,7 +11,7 @@ const rateLabel = () => nf2.format(S.interest.rate).replace(/,?0+$/, '') + NBSP 
 
 function navRow(icon, title, sub, action, extra, end) {
   return `<button class="row" data-a="${action}" ${extra || ''}>
-    <span class="row-ic"><span class="tx-ic">${ICON[icon]}</span></span>
+    <span class="row-ic nav"><span class="tx-ic">${ICON[icon]}</span></span>
     <span class="row-main"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</span>
     ${end ? `<span class="row-end">${end}</span>` : ''}
   </button>`;
@@ -19,7 +19,7 @@ function navRow(icon, title, sub, action, extra, end) {
 
 function accPickRow(a, selected, action, extra) {
   return `<button class="row" data-key="pick-${a.id}" data-a="${action}" data-id="${a.id}" ${extra || ''}>
-    <span class="row-ic">${accAvatar(a)}</span>
+    <span class="row-ic tx">${accAvatar(a)}</span>
     <span class="row-main"><b>${esc(a.name)}</b><small>${num(a.balance)}</small></span>
     <span class="row-end"><i class="radio ${selected ? 'on' : ''}">${selected ? ICON.check : ''}</i></span>
   </button>`;
@@ -28,7 +28,7 @@ function accPickRow(a, selected, action, extra) {
 function accountChips(view, action) {
   if (!subAccounts().length) return '';
   const chip = (id, label) => `<button class="chip ${view === id ? 'on' : ''}" data-a="${action}" data-view="${id}">${label}</button>`;
-  return `<div class="chips" data-scroll="chips-${action}">${chip('all', 'Alle Konten')}${S.accounts.map((a) => chip(a.id, (a.main ? '' : `<i class="chip-dot" style="background:${a.color}"></i>`) + esc(a.name))).join('')}</div>`;
+  return `<div class="chips" data-scroll="chips-${action}">${chip('all', 'Alle Konten')}${S.accounts.map((a) => chip(a.id, esc(a.name))).join('')}</div>`;
 }
 
 function txGroupsHTML(list, view) {
@@ -237,13 +237,11 @@ SHEETS.newAccount = {
     const taken = S.accounts.map((a) => a.name);
     const sugg = SUB_PRESETS.filter((s) => !taken.includes(s.name)).slice(0, 6);
     return `${shTitle(edit ? 'Unterkonto bearbeiten' : 'Neues Unterkonto', edit ? '' : 'Eigene IBAN, eigenes Sparziel – verzinst wie dein Hauptkonto')}
-      <div class="na-preview"><span class="acc-av big" data-key="pv-${p.icon}" style="--c:${p.color}">${accIconSVG(p.icon)}</span></div>
+      <div class="na-preview"><span class="tx-ic acc big" data-key="pv-${p.icon}">${accIconSVG(p.icon)}</span></div>
       <label class="field"><span>Name</span><input data-f="name" maxlength="22" placeholder="z. B. Urlaub" autocomplete="off" autocapitalize="sentences" enterkeyhint="done"></label>
-      ${edit || !sugg.length ? '' : `<div class="chips wrap">${sugg.map((s) => `<button class="chip" data-a="naSuggest" data-name="${esc(s.name)}" data-icon="${s.icon}">${accIconSVG(s.icon)}${esc(s.name)}</button>`).join('')}</div>`}
+      ${edit || !sugg.length ? '' : `<div class="chips wrap">${sugg.map((s) => `<button class="chip" data-a="naSuggest" data-name="${esc(s.name)}" data-icon="${s.icon}">${esc(s.name)}</button>`).join('')}</div>`}
       ${secHTML('Symbol')}
-      <div class="icon-grid" style="--c:${p.color}">${ACC_ICON_KEYS.map((k) => `<button class="${k === p.icon ? 'on' : ''}" data-a="naIcon" data-icon="${k}" aria-label="${k}">${accIconSVG(k)}</button>`).join('')}</div>
-      ${secHTML('Farbe')}
-      <div class="color-row">${ACC_COLORS.map((c) => `<button class="${c === p.color ? 'on' : ''}" data-a="naColor" data-color="${c}" style="--c:${c}" aria-label="Farbe"></button>`).join('')}</div>`;
+      <div class="icon-grid">${ACC_ICON_KEYS.map((k) => `<button class="${k === p.icon ? 'on' : ''}" data-a="naIcon" data-icon="${k}" aria-label="${k}">${accIconSVG(k)}</button>`).join('')}</div>`;
   },
   bottom(p) {
     const name = (p.name || '').trim();
@@ -267,7 +265,7 @@ SHEETS.accountDetails = {
     const settings = a.main
       ? ''
       : `${secHTML('Einstellungen')}
-        ${navRow('g_pen', 'Name, Symbol & Farbe', esc(a.name), 'editAccount', idAttr)}
+        ${navRow('g_pen', 'Name & Symbol', esc(a.name), 'editAccount', idAttr)}
         ${navRow('g_target', 'Sparziel', a.goal ? eur0(a.goal) : 'Kein Ziel festgelegt', 'editGoal', idAttr)}
         ${navRow('g_repeat', 'Monatliche Regel', a.rule ? eurCompact(a.rule.amount) + ' vom Hauptkonto, am ' + a.rule.day + '. des Monats' : 'Keine Regel', 'editRule', idAttr)}
         ${secHTML('Karte')}
@@ -325,18 +323,52 @@ function openRule(id) {
 
 /* ---------- Karte, Zinsen ---------- */
 
+const roundUpTarget = () => S.accounts.find((a) => a.roundUp) || null;
+
 SHEETS.card = {
-  html() {
-    const subs = subAccounts();
-    return `${shTitle('Karte', 'Debitkarte ···· ' + S.card.last4)}
-      <div class="plastic"><i class="pl-chip"></i><em>Debit</em><b>${esc(userName())}</b><span>····${NBSP}${NBSP}····${NBSP}${NBSP}····${NBSP}${NBSP}${S.card.last4}</span></div>
-      ${secHTML('Zahlungen abbuchen von', subs.length ? '<i class="badge">Neu</i>' : '')}
-      ${S.accounts.map((a) => accPickRow(a, a.id === S.card.accountId, 'setCardAccount')).join('')}
-      ${subs.length ? secHTML('Aufrunden in') + subs.map((a) => toggleRow(esc(a.name), 'Differenz zum nächsten vollen Euro sparen', a.roundUp, 'toggleRoundUp', `data-id="${a.id}"`)).join('') : ''}
-      <p class="legal">Demo: „Kartenzahlung simulieren“ erzeugt eine zufällige Zahlung auf dem verknüpften Konto.</p>`;
+  html(p) {
+    const c = S.card;
+    const linked = acc(c.accountId) || acc('main');
+    const subs = subAccounts().length;
+    const ru = roundUpTarget();
+    const face = p.details
+      ? `<span class="pl-num">····${NBSP} ····${NBSP} ····${NBSP} ${c.last4}</span>
+         <span class="pl-meta"><i>Karteninhaber</i>${esc(userName())}</span>
+         <span class="pl-meta r"><i>Gültig bis</i>${c.exp}</span>
+         <b class="pl-link">Details verbergen ${ICON.chevRight}</b>`
+      : `${trLogoHTML('on-card')}<i class="pl-chip"></i><b class="pl-link">Details anzeigen ${ICON.chevRight}</b>`;
+    return `${shTitle('Karte', 'Classic')}
+      <button class="plastic ${c.locked ? 'locked' : ''} ${p.details ? 'details' : ''}" data-a="cardDetails">${face}${c.locked ? `<em class="pl-lock">${ICON.g_lock}Gesperrt</em>` : ''}</button>
+      ${secHTML('Einstellungen')}
+      ${navRow('g_snow', c.locked ? 'Entsperren' : 'Sperren', c.locked ? 'Karte ist gesperrt' : 'Alle Kartenaktivitäten sperren', 'cardLock')}
+      ${navRow('g_coins', 'Zahle mit', esc(linked.name) + (subs ? ' · Konto wählen' : ' · Cash'), 'cardPayWith')}
+      ${navRow('g_pin', 'Karten PIN', 'Deine 4-stellige PIN ansehen', 'sheet', 'data-sheet="pin"')}
+      ${navRow('g_limit', 'Limits', 'Kontrolliere deine Ausgaben und Abhebungen', 'toast', 'data-msg="Limits: in der Demo nicht verfügbar"')}
+      ${navRow('g_nut', 'Verwalten', 'Sicherheit, Einstellungen und Ersatz', 'toast', 'data-msg="Verwalten: in der Demo nicht verfügbar"')}
+      ${secHTML('Vorteile')}
+      ${navRow('g_up', 'Round up', subs ? (ru ? 'Wechselgeld sparen in „' + esc(ru.name) + '“' : 'Aus · Wechselgeld in ein Unterkonto sparen') : 'Wechselgeld automatisch investieren', subs ? 'cardRoundUp' : 'toast', subs ? '' : 'data-msg="Eröffne ein Unterkonto, um Wechselgeld dorthin zu sparen"')}
+      ${navRow('g_percent', 'Saveback', '1 % deiner Kartenzahlungen in den Sparplan', 'toast', 'data-msg="Saveback: in der Demo nicht verfügbar"')}
+      ${secHTML('Demo')}
+      ${navRow('g_card', 'Kartenzahlung simulieren', 'Bucht vom gewählten Konto ab', 'simulatePay')}`;
   },
-  bottom() {
-    return '<button class="cta" data-a="simulatePay">Kartenzahlung simulieren</button>';
+};
+
+SHEETS.pin = {
+  html() {
+    return `${shTitle('Karten PIN', 'Nur du kannst deine PIN sehen')}
+      <div class="pin">${S.card.pin.split('').map((d) => `<b>${d}</b>`).join('')}</div>
+      <p class="legal">Zufällig erzeugte PIN für die Demo.</p>`;
+  },
+};
+
+SHEETS.roundUp = {
+  html() {
+    const cur = roundUpTarget();
+    const radio = (on) => `<span class="row-end"><i class="radio ${on ? 'on' : ''}">${on ? ICON.check : ''}</i></span>`;
+    return `${shTitle('Round up', 'Jede Kartenzahlung wird auf den nächsten vollen Euro aufgerundet – die Differenz landet im gewählten Unterkonto.')}
+      <div class="gap"></div>
+      <button class="row" data-key="ru-off" data-a="setRoundUp" data-id=""><span class="row-ic tx"><span class="tx-ic">${ICON.g_minus}</span></span><span class="row-main"><b>Aus</b><small>Kein Aufrunden</small></span>${radio(!cur)}</button>
+      ${subAccounts().map((a) => `<button class="row" data-key="ru-${a.id}" data-a="setRoundUp" data-id="${a.id}"><span class="row-ic tx">${accAvatar(a)}</span><span class="row-main"><b>${esc(a.name)}</b><small>${num(a.balance)}</small></span>${radio(cur && cur.id === a.id)}</button>`).join('')}`;
   },
 };
 
@@ -599,7 +631,7 @@ SHEETS.search = {
     }
     return `${shTitle(p.title || 'Suche')}
       <div class="gap"></div>
-      ${SEARCH_CATS.map((c) => `<button class="row slim" data-a="searchCat" data-cat="${c.id}"><span class="row-ic"><span class="tx-ic">${ICON[c.icon]}</span></span><span class="row-main"><b>${c.label}</b></span></button>`).join('')}
+      ${SEARCH_CATS.map((c) => `<button class="row slim" data-a="searchCat" data-cat="${c.id}"><span class="row-ic nav"><span class="tx-ic">${ICON[c.icon]}</span></span><span class="row-main"><b>${c.label}</b></span></button>`).join('')}
       ${p.pick ? '' : ipoCards()}
       ${secHTML('Zuletzt gesucht')}
       ${S.recent.map((id) => insRow(INSTR[id], 'searchPick', true)).join('')}`;
@@ -618,29 +650,67 @@ SHEETS.instrument = {
     const pos = position(p.iid);
     const wl = S.watchlist.includes(p.iid);
     const plan = S.plans.find((x) => x.iid === p.iid);
-    return `<div data-chart-root>
-        <div class="ins-head">${insIcon(ins, 'lg')}<button class="star ${wl ? 'on' : ''}" data-a="toggleWatch" data-iid="${ins.id}" aria-label="Watchlist">${wl ? ICON.starFill : ICON.star}</button></div>
-        <h1 class="sh-title">${esc(ins.name)}</h1>
-        <div class="hero-line pad"><span class="hero-amount" data-chart-amount>${eur(m.price)}</span><span class="hero-delta" data-chart-delta>${deltaHTML(series.pct)}</span><span class="hero-date" data-chart-date></span></div>
+    const f = insFacts(p.iid);
+    const acc2 = accentFor(ins);
+    const ms = marketState(ins);
+    const now = Date.now();
+    const perf = pos ? posPerf(pos) : insSeries(p.iid, 'y').pct;
+    return `<div class="ins-view" style="--acc:${acc2[0]};--acc-fg:${acc2[1]}">
+      <div data-chart-root>
+        <div class="ins-head">${insIcon(ins, 'md')}<button class="ins-add ${wl ? 'on' : ''}" data-a="toggleWatch" data-iid="${ins.id}" aria-label="Watchlist">${wl ? ICON.check : ICON.plus}</button></div>
+        <div class="hero-label ins-name"><span>${esc(ins.name)}</span></div>
+        <div class="hero-line pad"><span class="hero-amount" data-chart-amount>${eur(m.price)}</span><span class="hero-delta acc" data-chart-delta>${deltaHTML(series.pct)}</span><span class="hero-date" data-chart-date></span></div>
         ${tfHTML(p.tf, 'insTf')}
+        <div class="closed ${ms.open ? 'hide' : ''}">${ICON.moon}<span>Handelsplatz ist geschlossen</span></div>
         ${chartHTML(series, 'ins' + sheet.key)}
       </div>
-      ${pos
-        ? secHTML('Deine Position') +
-          kv('Wert', eur(pos.value)) +
-          `<div class="kv"><span>Rendite</span><b>${chgHTML(posPerf(pos))}</b></div>` +
-          kv('Gewinn / Verlust', (pos.value - pos.invested >= 0 ? '+' : '−') + eurAbs(pos.value - pos.invested)) +
-          kv('Anteile', new Intl.NumberFormat('de-DE', { maximumFractionDigits: 4 }).format(pos.value / m.price))
+      <div class="cards" data-scroll="inscards">
+        <button class="card" data-a="trade" data-side="buy" data-iid="${ins.id}"><span class="card-l">Position</span>${pos ? `<span class="card-v">${num(pos.value)}</span>` : `<i class="card-plus">${ICON.plus}</i>`}</button>
+        <div class="card"><span class="card-l">${pos ? 'Performance' : '1 Jahr'}</span><span class="card-v">${chgHTML(perf)}</span></div>
+        <button class="card" data-a="toast" data-msg="Preisalarme: in der Demo nicht verfügbar"><span class="card-l">Aktivität</span><i class="card-bell">${ICON.g_bell}</i></button>
+        <button class="card" data-a="insPlan" data-iid="${ins.id}"><span class="card-l">Sparplan</span>${plan ? `<span class="card-v">${eurCompact(plan.amount)}</span>` : `<i class="card-plus">${ICON.plus}</i>`}</button>
+      </div>
+      <div class="sec"><button class="sec-link" data-a="insMore"><h2>Informationen</h2>${ICON.chevRight}</button></div>
+      <p class="ins-desc ${p.more ? 'open' : ''}" data-a="insMore">${esc(f.desc)}</p>
+      ${secHTML('Wichtigste Statistiken')}
+      <div class="stat-pager" data-scroll="stats${sheet.key}">${f.cols.map((col) => `<div class="stat-col">${col.map((r) => `<div class="kv"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('')}</div>`).join('')}</div>
+      <button class="acc-link" data-a="toast" data-msg="Preisalarme: in der Demo nicht verfügbar">Preisalarme ${ICON.chevRight}</button>
+      ${secHTML('Orderbuch')}
+      <div class="ob-card"><i class="ob-ic">${ICON.swirl}</i><span><b>Bestpreis</b><small>${ms.open ? 'Geld ' + f.cols[f.cols.length - 2][2][1] + ' · Brief ' + f.cols[f.cols.length - 2][3][1] : 'Öffnet um 7:30 Uhr'}</small></span></div>
+      <p class="legal tight">Aggregation aller relevanten Börsen mit handelbaren Kursen. Erfahre mehr über <b>Bestpreis</b>.</p>
+      ${f.long
+        ? `<div class="sec"><div class="sec-link"><h2>Derivate</h2>${ICON.chevRight}</div></div>
+           <div class="ls"><div class="ls-long" style="width:${Math.max(34, f.long)}%"><span>Long</span><b>${pct0(f.long)}</b></div>
+           <div class="ls-short"><i style="width:${Math.max(9, 100 - f.long)}%"></i><span>Short${NBSP}${NBSP}<em>${pct0(100 - f.long)}</em></span></div></div>
+           <p class="legal tight">Handelsvolumen der letzten 7 Tage</p>`
         : ''}
-      ${secHTML('Info')}
-      ${kv('Kategorie', TYPE_LABEL[ins.type])}
-      ${kv('Depot', PF_ACCOUNTS.find((a) => a.id === ins.acct).name)}
-      ${kv('Sparplan', plan ? eurCompact(plan.amount) + ' monatlich' : 'Ab 1 € möglich')}
-      <p class="legal">Kurse und Verläufe sind zufällig erzeugt und dienen nur der Demonstration.</p>`;
+      <div class="sec"><div class="sec-link"><h2>Nachrichten</h2>${ICON.chevRight}</div></div>
+      <div class="news" data-scroll="news${sheet.key}">${f.news.map((n) => `<button class="news-item" data-a="toast" data-msg="Nachrichten sind in der Demo Platzhalter"><b>${esc(n.title)}</b><small>vor ${n.ago}</small></button>`).join('')}</div>
+      ${f.events.length
+        ? `<div class="sec"><div class="sec-link"><h2>Ereignisse</h2>${ICON.chevRight}</div></div>
+           ${f.events.map((e) => `<div class="row"><span class="row-ic ev"><i class="ev-date"><b>${String(new Date(e.date).getDate()).padStart(2, '0')}</b>${MON_SHORT[new Date(e.date).getMonth()].replace('.', '')}</i></span><span class="row-main"><b>${e.title}</b><small>${inDaysLabel(e.date, now)} · ${e.sub}</small></span></div>`).join('')}`
+        : ''}
+      ${secHTML('User besitzen auch')}
+      <div class="cards movers" data-scroll="peers${sheet.key}">${f.peers.map((id) => `<button class="card" data-a="instrument" data-iid="${id}">${insIcon(INSTR[id])}<span class="card-v">${esc(INSTR[id].name)}</span>${chgHTML(S.market[id].day)}</button>`).join('')}</div>
+      <p class="legal">Kurse, Kennzahlen, Nachrichten und Termine sind zufällig erzeugt und dienen nur der Demonstration.</p>
+    </div>`;
   },
   bottom(p) {
+    const acc2 = accentFor(INSTR[p.iid]);
+    return `<div class="bottombar inl acc" style="--acc:${acc2[0]};--acc-fg:${acc2[1]}"><button class="pill" data-a="insPlan" data-iid="${p.iid}"><span>Sparplan</span>${ICON.refresh}</button><button class="pill" data-a="tradeMenu" data-iid="${p.iid}"><span>Handeln</span>${ICON.pulse}</button></div>`;
+  },
+};
+
+SHEETS.tradeMenu = {
+  html(p) {
+    const ins = INSTR[p.iid];
     const pos = position(p.iid);
-    return `<div class="bottombar inl">${pos ? `<button class="pill dark" data-a="trade" data-side="sell" data-iid="${p.iid}"><span>Verkaufen</span></button>` : ''}<button class="pill" data-a="trade" data-side="buy" data-iid="${p.iid}"><span>Kaufen</span>${ICON.plus}</button></div>`;
+    return (
+      shTitle('Handeln', esc(ins.name)) +
+      '<div class="gap"></div>' +
+      navRow('g_down', 'Kaufen', 'Ab 1 € – Betrag frei wählbar', 'trade', `data-side="buy" data-iid="${ins.id}"`) +
+      (pos ? navRow('g_up', 'Verkaufen', 'Deine Position: ' + eur(pos.value), 'trade', `data-side="sell" data-iid="${ins.id}"`) : '')
+    );
   },
 };
 

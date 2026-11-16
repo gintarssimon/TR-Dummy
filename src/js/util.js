@@ -222,11 +222,55 @@ function logoColors(slug) {
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);
   const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  if (LOGO_ON_BRAND.includes(slug)) return ['#' + hex, lum > 0.7 ? '#000000' : '#ffffff'];
   return lum > 0.7 ? ['#1d1d21', '#' + hex] : ['#ffffff', '#' + hex];
 }
+/** Wortmarken, die im Original weiß auf der Markenfarbe stehen. */
+const LOGO_ON_BRAND = ['goldmansachs', 'adyen'];
 const logoUse = (slug) => `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><use href="#lg-${slug}"/></svg>`;
 /** Alle Logos einmal als SVG-Symbole ins Dokument legen, Zeilen verweisen nur per <use> darauf. */
 function mountLogoSprite() {
   const symbols = Object.keys(LOGOS).map((k) => `<symbol id="lg-${k}" viewBox="0 0 24 24"><path d="${LOGOS[k][1]}"/></symbol>`).join('');
   document.body.insertAdjacentHTML('afterbegin', `<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">${symbols}</svg>`);
+}
+
+/* ---------- Weitere Icons ---------- */
+
+Object.assign(ICON, {
+  g_snow: svg('<path d="M8 2.600v10.800M3.300 5.300l9.400 5.400M12.700 5.300l-9.400 5.400"/>', '16 16', 'stroke-width="1.900"'),
+  g_coins: svg('<ellipse cx="8" cy="5.300" rx="4.200" ry="1.900" fill="currentColor"/><path d="M3.800 5.300v5.400c0 1 1.900 1.900 4.200 1.900s4.200-.900 4.200-1.900V5.300M3.800 8c0 1 1.900 1.900 4.200 1.900s4.200-.900 4.200-1.900"/>', '16 16', 'stroke-width="1.500"'),
+  g_pin: svg('<rect x="2.800" y="4.400" width="10.400" height="7.200" rx="2.100"/><rect x="4.700" y="6.300" width="3.100" height="1.900" rx=".6" fill="currentColor" stroke="none"/>', '16 16', 'stroke-width="1.700"'),
+  g_limit: svg('<circle cx="8" cy="8" r="5.100"/><path fill="currentColor" stroke="none" d="M8 8V3.500A4.500 4.500 0 0112.500 8z"/>', '16 16', 'stroke-width="1.700"'),
+  g_nut: svg('<path d="M8 2.700l4.600 2.650v5.300L8 13.300l-4.600-2.650v-5.300z"/><circle cx="8" cy="8" r="1.600"/>', '16 16', 'stroke-width="1.700"'),
+  g_bell: svg('<path fill="currentColor" stroke="none" d="M8 2.700c-2.100 0-3.500 1.500-3.500 3.700v2.200L3.400 10.500v.9h9.200v-.9l-1.100-1.900V6.400c0-2.200-1.400-3.700-3.500-3.700zM6.700 12.300a1.300 1.300 0 002.600 0z"/>', '16 16'),
+  g_lock: svg('<rect x="4" y="7.300" width="8" height="5.900" rx="1.500" fill="currentColor" stroke="none"/><path d="M5.700 7.300V5.700a2.300 2.300 0 014.600 0v1.600"/>', '16 16', 'stroke-width="1.700"'),
+  g_percent: svg('<path d="M4.300 11.700l7.400-7.400"/><circle cx="5.200" cy="5.200" r="1.300"/><circle cx="10.800" cy="10.800" r="1.300"/>', '16 16', 'stroke-width="1.600"'),
+  moon: svg('<path fill="currentColor" stroke="none" d="M14.500 3.200a9 9 0 105.900 14.600A10.200 10.200 0 0114.500 3.200z"/>'),
+  refresh: svg('<path d="M19.500 12a7.500 7.500 0 01-13.300 4.800M4.500 12a7.500 7.500 0 0113.300-4.800"/><path d="M18 3.400v4h-4M6 20.600v-4h4"/>', '24 24', 'stroke-width="2.600"'),
+  pulse: svg('<path d="M2.500 15.500l4.200-6.500 4 5 3.600-7.500 3 5 4.200-3.500"/>', '24 24', 'stroke-width="2.600"'),
+  swirl: svg('<circle cx="12" cy="12" r="8" stroke-dasharray="30 20" /><circle cx="12" cy="12" r="3.400" fill="currentColor" stroke="none"/>', '24 24', 'stroke-width="3.400"'),
+});
+
+/* ---------- Wortmarke ---------- */
+
+const TR_MARK = '<svg class="tr-mark" viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="5.400" stroke-linecap="butt" aria-hidden="true"><path d="M1 5.800C6 2.600 10 2.600 15 4.900s9 2.500 14-.700"/><path d="M1 13C6 9.800 10 9.800 15 12.100s9 2.500 14-.700"/><path d="M1 20.200C6 17 10 17 15 19.300s9 2.500 14-.700"/></svg>';
+const trLogoHTML = (cls) => `<span class="tr-logo ${cls || ''}"><b>TRADE REPUBLIC</b>${TR_MARK}</span>`;
+
+/* ---------- Akzentfarbe je Wertpapier (aus der Markenfarbe) ---------- */
+
+function linLum(rgb) {
+  const f = (c) => {
+    c /= 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * f(rgb[0]) + 0.7152 * f(rgb[1]) + 0.0722 * f(rgb[2]);
+}
+/** Liefert [Akzent, Schriftfarbe darauf]. Neutrale Marken (Schwarz/Weiß/Grau) und Titel ohne Logo bleiben weiß. */
+function accentFor(ins) {
+  if (!ins.logo || !LOGOS[ins.logo]) return ['#ffffff', '#000000'];
+  const hex = LOGOS[ins.logo][0];
+  let rgb = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  if (Math.max.apply(null, rgb) - Math.min.apply(null, rgb) < 40) return ['#ffffff', '#000000'];
+  for (let i = 0; i < 20 && linLum(rgb) < 0.17; i++) rgb = rgb.map((c) => Math.round(c + (255 - c) * 0.12));
+  return ['rgb(' + rgb.join(',') + ')', linLum(rgb) > 0.42 ? '#000000' : '#ffffff'];
 }

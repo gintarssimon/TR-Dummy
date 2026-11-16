@@ -306,7 +306,7 @@ function openNewAccount() {
     return;
   }
   const used = S.accounts.map((a) => a.icon);
-  openSheet('newAccount', { name: '', icon: ACC_ICON_KEYS.find((k) => !used.includes(k)) || ACC_ICON_KEYS[0], color: nextColor() });
+  openSheet('newAccount', { name: '', icon: ACC_ICON_KEYS.find((k) => !used.includes(k)) || ACC_ICON_KEYS[0] });
 }
 
 function openPlanAmount(iid) {
@@ -470,10 +470,6 @@ const ACTIONS = {
     sheet.p.icon = d.icon;
     renderSheets();
   },
-  naColor(d, sheet) {
-    sheet.p.color = d.color;
-    renderSheets();
-  },
   naSuggest(d, sheet) {
     sheet.p.name = d.name;
     sheet.p.icon = d.icon;
@@ -488,13 +484,12 @@ const ACTIONS = {
       const a = acc(p.editId);
       a.name = name;
       a.icon = p.icon;
-      a.color = p.color;
       save();
       closeSheet(sheet);
       toast('Gespeichert');
       return;
     }
-    const a = createAccount({ name, icon: p.icon, color: p.color });
+    const a = createAccount({ name, icon: p.icon });
     resetUi('cash');
     ui.cashAcc = a.id;
     render();
@@ -502,7 +497,7 @@ const ACTIONS = {
   },
   editAccount(d) {
     const a = acc(d.id);
-    openSheet('newAccount', { editId: a.id, name: a.name, icon: a.icon, color: a.color });
+    openSheet('newAccount', { editId: a.id, name: a.name, icon: a.icon });
   },
   editGoal(d) {
     openGoal(d.id);
@@ -536,12 +531,39 @@ const ACTIONS = {
     save();
     render();
   },
-  setCardAccount(d) {
-    if (S.card.accountId === d.id) return;
-    S.card.accountId = d.id;
+  setRoundUp(d, sheet) {
+    S.accounts.forEach((x) => (x.roundUp = x.id === d.id));
     save();
     render();
-    toast('Karte bucht jetzt von „' + accName(d.id) + '“ ab');
+    setTimeout(() => closeSheet(sheet), 260);
+  },
+  cardDetails(d, sheet) {
+    sheet.p.details = !sheet.p.details;
+    renderSheets();
+    const node = sheetNode(sheet);
+    const card = node && node.querySelector('.plastic');
+    if (card && card.animate && !reduceMotion()) card.animate([{ transform: 'rotateY(90deg)' }, { transform: 'rotateY(0)' }], { duration: 420, easing: EASE });
+  },
+  cardLock() {
+    S.card.locked = !S.card.locked;
+    save();
+    render();
+    toast(S.card.locked ? 'Karte gesperrt' : 'Karte entsperrt');
+  },
+  cardPayWith() {
+    openSheet('pickAccount', {
+      title: 'Zahle mit',
+      current: S.card.accountId,
+      onPick: (id) => {
+        if (id === S.card.accountId) return;
+        S.card.accountId = id;
+        save();
+        toast('Karte bucht jetzt von „' + accName(id) + '“ ab');
+      },
+    });
+  },
+  cardRoundUp() {
+    openSheet('roundUp');
   },
   closeAccount(d) {
     const a = acc(d.id);
@@ -639,7 +661,21 @@ const ACTIONS = {
     toast(on ? 'Von der Watchlist entfernt' : 'Zur Watchlist hinzugefügt');
   },
   trade(d) {
+    closeSheetsOfType('tradeMenu');
     openTrade(d.iid, d.side);
+  },
+  tradeMenu(d) {
+    if (!position(d.iid)) return openTrade(d.iid, 'buy');
+    openSheet('tradeMenu', { iid: d.iid });
+  },
+  insMore(d, sheet) {
+    sheet.p.more = !sheet.p.more;
+    renderSheets();
+  },
+  insPlan(d) {
+    const plan = S.plans.find((x) => x.iid === d.iid);
+    if (plan) openSheet('planDetail', { id: plan.id });
+    else openPlanAmount(d.iid);
   },
   planAdd() {
     openSheet('search', { cat: 'brokerage', title: 'Sparplan hinzufügen', pick: openPlanAmount });
@@ -790,6 +826,19 @@ function bindEvents() {
   bindCharts(app);
 }
 
+/** Ladescreen: kurz stehen lassen, dann weich in die App überblenden. */
+function hideSplash() {
+  const el = document.getElementById('splash');
+  if (!el) return;
+  const fonts = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+  const wait = new Promise((r) => setTimeout(r, reduceMotion() ? 500 : 1500));
+  Promise.all([fonts.catch(() => {}), wait]).then(() => {
+    document.getElementById('app').classList.add('ready');
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 800);
+  });
+}
+
 function tickClock() {
   const el = document.getElementById('clock');
   if (el) el.textContent = timeShort(Date.now());
@@ -804,6 +853,7 @@ function init() {
   mountMain();
   bindEvents();
   render();
+  hideSplash();
   tickClock();
   setInterval(tickClock, 15000);
 }

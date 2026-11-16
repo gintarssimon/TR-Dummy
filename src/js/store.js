@@ -144,14 +144,9 @@ function depositMoney(toId, amount) {
   save();
 }
 
-function nextColor() {
-  const used = S.accounts.map((a) => a.color);
-  return ACC_COLORS.find((c) => !used.includes(c)) || ACC_COLORS[S.accounts.length % ACC_COLORS.length];
-}
-
 function createAccount(o) {
   const R = makeRand((S.seed * 31 + S.seq * 7919) >>> 0);
-  const a = { id: 'a' + S.seq++, name: o.name.trim(), main: false, fixed: false, icon: o.icon, color: o.color || nextColor(), balance: 0, iban: makeIban(R), goal: o.goal || null, rule: null, roundUp: false, createdAt: Date.now() };
+  const a = { id: 'a' + S.seq++, name: o.name.trim(), main: false, fixed: false, icon: o.icon, balance: 0, iban: makeIban(R), goal: o.goal || null, rule: null, roundUp: false, createdAt: Date.now() };
   S.accounts.push(a);
   save();
   return a;
@@ -198,6 +193,7 @@ function tradeSell(iid, amount, toId) {
 /** Demo: zufällige Kartenzahlung vom verknüpften Konto, inkl. Aufrunden. */
 function simulateCardPayment() {
   const R = makeRand((Date.now() ^ (S.seq * 2654435761)) >>> 0);
+  if (S.card.locked) return { error: 'Karte ist gesperrt' };
   const from = acc(S.card.accountId) || acc('main');
   const pool = MERCHANTS.filter((m) => !m[4] && m[2] !== m[3] && m[3] <= 70);
   let m = R.pick(pool);

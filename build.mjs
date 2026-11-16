@@ -14,7 +14,9 @@ html = html.replace(/[ \t]*<script src="([^"]+)"><\/script>\n?/g, (_, p) => {
   scripts.push(read(p).replace(/^'use strict';\n/, ''));
   return '';
 });
-html = html.replace(/<link rel="stylesheet" href="([^"]+)">/, (_, p) => `<style>\n${read(p)}</style>`);
+// Schrift als Base64 einbetten, damit die Datei eigenständig bleibt
+const inlineFonts = (css) => css.replace(/url\("(fonts\/[^"]+\.woff2)"\)/g, (_, p) => `url(data:font/woff2;base64,${readFileSync(join(src, p)).toString('base64')})`);
+html = html.replace(/<link rel="stylesheet" href="([^"]+)">/, (_, p) => `<style>\n${inlineFonts(read(p))}</style>`);
 const js = `(function () {\n'use strict';\n${scripts.join('\n')}\n})();`;
 if (js.includes('</script')) throw new Error('JS enthält </script – Inline-Build nicht möglich');
 html = html.replace('</body>', () => `<script>\n${js}\n</script>\n</body>`);

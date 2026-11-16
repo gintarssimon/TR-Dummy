@@ -54,7 +54,6 @@ const SUB_PRESETS = [
   { name: 'Führerschein', icon: 'car', goal: [1800, 3200] },
   { name: 'Umzug', icon: 'box', goal: [700, 2000] },
 ];
-const ACC_COLORS = ['#2f7bff', '#8a55ff', '#05d05a', '#ff9f0a', '#ff4f6d', '#30c8d6', '#ffd60a', '#d16bff', '#64d2ff', '#c4a77d'];
 
 /** Depot-Konten im Portfolio */
 const PF_ACCOUNTS = [
@@ -190,14 +189,14 @@ function generate(seed, opts) {
 
   /* Cash-Konten */
   const interestRate = R.pick([2, 2.25, 2.5]);
-  const accounts = [{ id: 'main', name: 'Hauptkonto', main: true, icon: 'euro', color: '#ffffff', balance: R.money(140, 2600), iban: makeIban(R), goal: null, rule: null, roundUp: false, createdAt: now - 900 * DAY }];
+  const accounts = [{ id: 'main', name: 'Hauptkonto', main: true, icon: 'euro', balance: R.money(140, 2600), iban: makeIban(R), goal: null, rule: null, roundUp: false, createdAt: now - 900 * DAY }];
   if (!opts.noSubs) {
     const presets = R.sample(SUB_PRESETS, 3);
     presets.forEach((p, i) => {
       const goal = p.goal ? Math.round(R.f(p.goal[0], p.goal[1]) / 50) * 50 : null;
       const balance = goal ? R.money(goal * 0.12, goal * 0.85) : R.money(120, 1400);
       accounts.push({
-        id: nid('a'), name: p.name, main: false, fixed: !!p.fixed, icon: p.icon, color: ACC_COLORS[i],
+        id: nid('a'), name: p.name, main: false, fixed: !!p.fixed, icon: p.icon,
         balance, iban: makeIban(R), goal,
         rule: { amount: R.pick([25, 50, 75, 100, 150]), day: 1 },
         roundUp: i === 0 && R.chance(0.6), createdAt: now - R.i(60, 300) * DAY,
@@ -298,10 +297,10 @@ function generate(seed, opts) {
     v: STATE_VERSION, seed, createdAt: now, seq,
     user, contacts, market, positions, watchlist, recent, ipos, pfMaxDays,
     accounts, plans, scheduled, tx,
-    card: { accountId: 'main', last4: String(R.i(1000, 9999)) },
+    card: { accountId: 'main', last4: String(R.i(1000, 9999)), exp: String(R.i(1, 12)).padStart(2, '0') + '/' + String((new Date(now).getFullYear() + R.i(2, 4)) % 100), pin: String(R.i(0, 9999)).padStart(4, '0'), locked: false },
     interest: { rate: interestRate, total: interestTotal, accrued: R.money(0.1, 1.4) },
     waitlist: R.chance(0.7),
   };
 }
 
-const STATE_VERSION = 4;
+const STATE_VERSION = 5;

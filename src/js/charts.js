@@ -46,7 +46,7 @@ function genSeries(key, tf, endValue, opts) {
   const now = Date.now();
   const span = (opts.span || cfg.span) * DAY;
   const dates = values.map((_, i) => now - span + (span * i) / (n - 1));
-  return { values, dates, base: start, pct, tf, real: endValue > 0 };
+  return { values, dates, base: start, pct, tf, real: endValue > 0, xf: opts.xf || 1 };
 }
 
 function pfSeries(pfAcc, tf) {
@@ -61,7 +61,7 @@ function pfSeries(pfAcc, tf) {
 
 function insSeries(iid, tf) {
   const m = S.market[iid];
-  return genSeries('ins-' + iid, tf, m.price, { pct: tf === 'd' ? m.day : null });
+  return genSeries('ins-' + iid, tf, m.price, { pct: tf === 'd' ? m.day : null, xf: tf === 'd' ? marketState(INSTR[iid]).frac : 1 });
 }
 
 /* ---------- SVG-Chart ---------- */
@@ -70,10 +70,11 @@ const CHARTS = {};
 const CH_W = 390;
 const CH_H = 230;
 
-function buildLine(ys) {
+function buildLine(ys, xf) {
   let d = '';
   const n = ys.length;
-  for (let i = 0; i < n; i++) d += (i ? 'L' : 'M') + ((i / (n - 1)) * CH_W).toFixed(1) + ' ' + ys[i].toFixed(1);
+  const w = CH_W * (xf || 1);
+  for (let i = 0; i < n; i++) d += (i ? 'L' : 'M') + ((i / (n - 1)) * w).toFixed(1) + ' ' + ys[i].toFixed(1);
   return d;
 }
 
@@ -86,11 +87,12 @@ function chartHTML(series, cid) {
   const y = (val) => padT + (1 - (val - lo) / (hi - lo || 1)) * (CH_H - padT - padB);
   const ys = v.map(y);
   const by = y(series.base);
-  CHARTS[cid] = { series, ys, by, sig: series.tf + '|' + v[v.length - 1].toFixed(2) + '|' + series.base.toFixed(2) };
+  const xf = series.xf || 1;
+  CHARTS[cid] = { series, ys, by, xf, sig: series.tf + '|' + v[v.length - 1].toFixed(2) + '|' + series.base.toFixed(2) + '|' + xf.toFixed(3) };
   return `<div class="chart" data-cid="${cid}">
     <svg viewBox="0 0 ${CH_W} ${CH_H}" preserveAspectRatio="none">
       <path class="ch-base" d="M0 ${by.toFixed(1)}H${CH_W}" vector-effect="non-scaling-stroke"/>
-      <path class="ch-line" d="${buildLine(ys)}" vector-effect="non-scaling-stroke"/>
+      <path class="ch-line" d="${buildLine(ys, xf)}" vector-effect="non-scaling-stroke"/>
     </svg>
     <div class="ch-cursor" hidden><i></i></div>
   </div>`;
@@ -103,14 +105,14 @@ function syncCharts(root) {
     if (!c) return;
     const drawn = el._drawn;
     if (!drawn || drawn.ys.length !== c.ys.length) {
-      el._drawn = { ys: c.ys.slice(), by: c.by };
+      el._drawn = { ys: c.ys.slice(), by: c.by, xf: c.xf };
       el._sig = c.sig;
       return;
     }
     if (el._sig === c.sig) return;
     el._sig = c.sig;
-    const from = { ys: drawn.ys.slice(), by: drawn.by };
-    const to = { ys: c.ys, by: c.by };
+    const from = { ys: drawn.ys.slice(), by: drawn.by, xf: drawn.xf || 1 };
+    const to = { ys: c.ys, by: c.by, xf: c.xf };
     const line = el.querySelector('.ch-line');
     const base = el.querySelector('.ch-base');
     const token = (el._tw = {});
@@ -121,9 +123,10 @@ function syncCharts(root) {
       const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       const ys = from.ys.map((y0, i) => y0 + (to.ys[i] - y0) * e);
       const by = from.by + (to.by - from.by) * e;
-      line.setAttribute('d', buildLine(ys));
+      const xf = from.xf + (to.xf - from.xf) * e;
+      line.setAttribute('d', buildLine(ys, xf));
       base.setAttribute('d', 'M0 ' + by.toFixed(1) + 'H' + CH_W);
-      el._drawn = { ys, by };
+      el._drawn = { ys, by, xf };
       if (t < 1) requestAnimationFrame(frame);
     };
     frame(t0);
@@ -148,13 +151,13 @@ function bindCharts(root) {
     const c = CHARTS[el.dataset.cid];
     if (!c) return;
     const rect = el.getBoundingClientRect();
-    const t = clamp((clientX - rect.left) / rect.width, 0, 1);
+    const t = clamp((clientX - rect.left) / rect.width / c.xf, 0, 1);
     const i = Math.round(t * (c.series.values.length - 1));
     const val = c.series.values[i];
     const scope = el.closest('[data-chart-root]');
     const cur = el.querySelector('.ch-cursor');
     cur.hidden = false;
-    cur.style.left = (i / (c.series.values.length - 1)) * 100 + '%';
+    cur.style.left = (i / (c.series.values.length - 1)) * c.xf * 100 + '%';
     cur.firstElementChild.style.top = (c.ys[i] / CH_H) * 100 + '%';
     if (!scope) return;
     const amount = scope.querySelector('[data-chart-amount]');
