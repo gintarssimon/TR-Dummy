@@ -3,12 +3,14 @@
 /* ---------- Kursverläufe (deterministisch aus dem Seed) ---------- */
 
 const TF_LIST = [['d', '1T'], ['w', '1W'], ['m', '1M'], ['y', '1J'], ['max', 'Max']];
+// Alle Zeiträume haben gleich viele Punkte, damit der Chart beim Wechsel weich von Kurve zu Kurve morphen kann.
+const CH_N = 120;
 const TF_CFG = {
-  d: { n: 90, span: 0.42, floor: 0.004, pct: 0.9 },
-  w: { n: 110, span: 7, floor: 0.012, pct: 2.2 },
-  m: { n: 120, span: 30, floor: 0.03, pct: 4.5 },
-  y: { n: 150, span: 365, floor: 0.07, pct: 12 },
-  max: { n: 190, span: 800, floor: 0.1, pct: 30 },
+  d: { n: CH_N, span: 0.42, floor: 0.004, pct: 0.9 },
+  w: { n: CH_N, span: 7, floor: 0.012, pct: 2.2 },
+  m: { n: CH_N, span: 30, floor: 0.03, pct: 4.5 },
+  y: { n: CH_N, span: 365, floor: 0.07, pct: 12 },
+  max: { n: CH_N, span: 800, floor: 0.1, pct: 30 },
 };
 
 /**
@@ -68,6 +70,13 @@ const CHARTS = {};
 const CH_W = 390;
 const CH_H = 230;
 
+function buildLine(ys) {
+  let d = '';
+  const n = ys.length;
+  for (let i = 0; i < n; i++) d += (i ? 'L' : 'M') + ((i / (n - 1)) * CH_W).toFixed(1) + ' ' + ys[i].toFixed(1);
+  return d;
+}
+
 function chartHTML(series, cid) {
   const v = series.values;
   const lo = Math.min(series.base, Math.min.apply(null, v));
@@ -75,18 +84,50 @@ function chartHTML(series, cid) {
   const padT = 14;
   const padB = 14;
   const y = (val) => padT + (1 - (val - lo) / (hi - lo || 1)) * (CH_H - padT - padB);
-  const x = (i) => (i / (v.length - 1)) * CH_W;
-  let d = '';
-  for (let i = 0; i < v.length; i++) d += (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v[i]).toFixed(1);
-  CHARTS[cid] = { series, ys: v.map(y) };
-  const by = y(series.base).toFixed(1);
+  const ys = v.map(y);
+  const by = y(series.base);
+  CHARTS[cid] = { series, ys, by, sig: series.tf + '|' + v[v.length - 1].toFixed(2) + '|' + series.base.toFixed(2) };
   return `<div class="chart" data-cid="${cid}">
     <svg viewBox="0 0 ${CH_W} ${CH_H}" preserveAspectRatio="none">
-      <path class="ch-base" d="M0 ${by}H${CH_W}" vector-effect="non-scaling-stroke"/>
-      <path class="ch-line" d="${d}" vector-effect="non-scaling-stroke"/>
+      <path class="ch-base" d="M0 ${by.toFixed(1)}H${CH_W}" vector-effect="non-scaling-stroke"/>
+      <path class="ch-line" d="${buildLine(ys)}" vector-effect="non-scaling-stroke"/>
     </svg>
     <div class="ch-cursor" hidden><i></i></div>
   </div>`;
+}
+
+/** Nach jedem Rendern aufrufen: lässt geänderte Charts weich von der alten zur neuen Kurve laufen. */
+function syncCharts(root) {
+  root.querySelectorAll('.chart[data-cid]').forEach((el) => {
+    const c = CHARTS[el.dataset.cid];
+    if (!c) return;
+    const drawn = el._drawn;
+    if (!drawn || drawn.ys.length !== c.ys.length) {
+      el._drawn = { ys: c.ys.slice(), by: c.by };
+      el._sig = c.sig;
+      return;
+    }
+    if (el._sig === c.sig) return;
+    el._sig = c.sig;
+    const from = { ys: drawn.ys.slice(), by: drawn.by };
+    const to = { ys: c.ys, by: c.by };
+    const line = el.querySelector('.ch-line');
+    const base = el.querySelector('.ch-base');
+    const token = (el._tw = {});
+    const t0 = performance.now();
+    const frame = (now) => {
+      if (el._tw !== token || !el.isConnected) return;
+      const t = clamp((now - t0) / 620, 0, 1);
+      const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const ys = from.ys.map((y0, i) => y0 + (to.ys[i] - y0) * e);
+      const by = from.by + (to.by - from.by) * e;
+      line.setAttribute('d', buildLine(ys));
+      base.setAttribute('d', 'M0 ' + by.toFixed(1) + 'H' + CH_W);
+      el._drawn = { ys, by };
+      if (t < 1) requestAnimationFrame(frame);
+    };
+    frame(t0);
+  });
 }
 
 function chartLabelDate(ts, tf) {
@@ -165,10 +206,8 @@ function ringSVG(share, color) {
   const r = 7;
   const c = 2 * Math.PI * r;
   const s = clamp(share, 0, 1);
-  const arc = s >= 0.995 ? '' : `stroke-dasharray="${(c * s).toFixed(2)} ${c.toFixed(2)}"`;
-  return `<svg class="ring" viewBox="0 0 20 20"><circle cx="10" cy="10" r="${r}" fill="none" stroke="#2a2a2e" stroke-width="3.2"/>${
-    s > 0.004 ? `<circle cx="10" cy="10" r="${r}" fill="none" stroke="${color}" stroke-width="3.2" stroke-linecap="${s > 0.9 ? 'butt' : 'round'}" ${arc} transform="rotate(-90 10 10)"/>` : ''
-  }</svg>`;
+  const cap = s > 0.03 && s < 0.97 ? 'round' : 'butt';
+  return `<svg class="ring" viewBox="0 0 20 20"><circle cx="10" cy="10" r="${r}" fill="none" stroke="#2a2a2e" stroke-width="3.2"/><circle class="ring-arc" cx="10" cy="10" r="${r}" fill="none" stroke="${color}" stroke-width="3.2" stroke-linecap="${cap}" style="stroke-dasharray:${(c * s).toFixed(2)} ${c.toFixed(2)};opacity:${s > 0.004 ? 1 : 0}" transform="rotate(-90 10 10)"/></svg>`;
 }
 
 function donutSVG(parts) {

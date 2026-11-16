@@ -18,9 +18,9 @@ function navRow(icon, title, sub, action, extra, end) {
 }
 
 function accPickRow(a, selected, action, extra) {
-  return `<button class="row" data-a="${action}" data-id="${a.id}" ${extra || ''}>
+  return `<button class="row" data-key="pick-${a.id}" data-a="${action}" data-id="${a.id}" ${extra || ''}>
     <span class="row-ic">${accAvatar(a)}</span>
-    <span class="row-main"><b>${esc(a.name)}</b><small>${eur(a.balance)}</small></span>
+    <span class="row-main"><b>${esc(a.name)}</b><small>${num(a.balance)}</small></span>
     <span class="row-end"><i class="radio ${selected ? 'on' : ''}">${selected ? ICON.check : ''}</i></span>
   </button>`;
 }
@@ -28,7 +28,7 @@ function accPickRow(a, selected, action, extra) {
 function accountChips(view, action) {
   if (!subAccounts().length) return '';
   const chip = (id, label) => `<button class="chip ${view === id ? 'on' : ''}" data-a="${action}" data-view="${id}">${label}</button>`;
-  return `<div class="chips" data-scroll="chips-${action}">${chip('all', 'Alle Konten')}${S.accounts.map((a) => chip(a.id, (a.emoji ? a.emoji + ' ' : '') + esc(a.name))).join('')}</div>`;
+  return `<div class="chips" data-scroll="chips-${action}">${chip('all', 'Alle Konten')}${S.accounts.map((a) => chip(a.id, (a.main ? '' : `<i class="chip-dot" style="background:${a.color}"></i>`) + esc(a.name))).join('')}</div>`;
 }
 
 function txGroupsHTML(list, view) {
@@ -73,12 +73,13 @@ const accPick = (label, id, onPick, exclude) => {
     label,
     icon: accAvatar(a),
     name: esc(a.name),
-    right: eur(a.balance),
+    right: num(a.balance),
     pick: onPick ? () => openSheet('pickAccount', { title: label, current: id, exclude, onPick }) : null,
   };
 };
 
 SHEETS.amount = {
+  viewKey: (p) => (p.done ? 'done' : 'edit'),
   html(p) {
     if (p.done) return `<div class="done"><i>${ICON.check}</i><b>${esc(p.done)}</b></div>`;
     const v = parseAmt(p.amt);
@@ -236,11 +237,13 @@ SHEETS.newAccount = {
     const taken = S.accounts.map((a) => a.name);
     const sugg = SUB_PRESETS.filter((s) => !taken.includes(s.name)).slice(0, 6);
     return `${shTitle(edit ? 'Unterkonto bearbeiten' : 'Neues Unterkonto', edit ? '' : 'Eigene IBAN, eigenes Sparziel – verzinst wie dein Hauptkonto')}
-      <div class="na-preview"><span class="acc-av big"><i class="av-emoji">${p.emoji}</i></span></div>
+      <div class="na-preview"><span class="acc-av big" data-key="pv-${p.icon}" style="--c:${p.color}">${accIconSVG(p.icon)}</span></div>
       <label class="field"><span>Name</span><input data-f="name" maxlength="22" placeholder="z. B. Urlaub" autocomplete="off" autocapitalize="sentences" enterkeyhint="done"></label>
-      ${edit || !sugg.length ? '' : `<div class="chips wrap">${sugg.map((s) => `<button class="chip" data-a="naSuggest" data-name="${esc(s.name)}" data-e="${s.emoji}">${s.emoji} ${esc(s.name)}</button>`).join('')}</div>`}
+      ${edit || !sugg.length ? '' : `<div class="chips wrap">${sugg.map((s) => `<button class="chip" data-a="naSuggest" data-name="${esc(s.name)}" data-icon="${s.icon}">${accIconSVG(s.icon)}${esc(s.name)}</button>`).join('')}</div>`}
       ${secHTML('Symbol')}
-      <div class="emoji-grid">${EMOJIS.map((e) => `<button class="${e === p.emoji ? 'on' : ''}" data-a="naEmoji" data-e="${e}">${e}</button>`).join('')}</div>`;
+      <div class="icon-grid" style="--c:${p.color}">${ACC_ICON_KEYS.map((k) => `<button class="${k === p.icon ? 'on' : ''}" data-a="naIcon" data-icon="${k}" aria-label="${k}">${accIconSVG(k)}</button>`).join('')}</div>
+      ${secHTML('Farbe')}
+      <div class="color-row">${ACC_COLORS.map((c) => `<button class="${c === p.color ? 'on' : ''}" data-a="naColor" data-color="${c}" style="--c:${c}" aria-label="Farbe"></button>`).join('')}</div>`;
   },
   bottom(p) {
     const name = (p.name || '').trim();
@@ -264,7 +267,7 @@ SHEETS.accountDetails = {
     const settings = a.main
       ? ''
       : `${secHTML('Einstellungen')}
-        ${navRow('g_pen', 'Name & Symbol', esc(a.name) + ' ' + a.emoji, 'editAccount', idAttr)}
+        ${navRow('g_pen', 'Name, Symbol & Farbe', esc(a.name), 'editAccount', idAttr)}
         ${navRow('g_target', 'Sparziel', a.goal ? eur0(a.goal) : 'Kein Ziel festgelegt', 'editGoal', idAttr)}
         ${navRow('g_repeat', 'Monatliche Regel', a.rule ? eurCompact(a.rule.amount) + ' vom Hauptkonto, am ' + a.rule.day + '. des Monats' : 'Keine Regel', 'editRule', idAttr)}
         ${secHTML('Karte')}
@@ -329,7 +332,7 @@ SHEETS.card = {
       <div class="plastic"><i class="pl-chip"></i><em>Debit</em><b>${esc(userName())}</b><span>····${NBSP}${NBSP}····${NBSP}${NBSP}····${NBSP}${NBSP}${S.card.last4}</span></div>
       ${secHTML('Zahlungen abbuchen von', subs.length ? '<i class="badge">Neu</i>' : '')}
       ${S.accounts.map((a) => accPickRow(a, a.id === S.card.accountId, 'setCardAccount')).join('')}
-      ${subs.length ? secHTML('Aufrunden in') + subs.map((a) => toggleRow((a.emoji ? a.emoji + ' ' : '') + esc(a.name), 'Differenz zum nächsten vollen Euro sparen', a.roundUp, 'toggleRoundUp', `data-id="${a.id}"`)).join('') : ''}
+      ${subs.length ? secHTML('Aufrunden in') + subs.map((a) => toggleRow(esc(a.name), 'Differenz zum nächsten vollen Euro sparen', a.roundUp, 'toggleRoundUp', `data-id="${a.id}"`)).join('') : ''}
       <p class="legal">Demo: „Kartenzahlung simulieren“ erzeugt eine zufällige Zahlung auf dem verknüpften Konto.</p>`;
   },
   bottom() {
@@ -399,7 +402,7 @@ SHEETS.planned = {
         ? list
             .map(
               (u) => `<div class="row">
-                <span class="row-ic"><span class="tx-ic">${ICON[u.icon]}</span></span>
+                <span class="row-ic tx">${u.logo && LOGOS[u.logo] ? brandIcon(u.logo) : u.iid ? insIcon(INSTR[u.iid]) : `<span class="tx-ic">${ICON[u.icon]}</span>`}</span>
                 <span class="row-main"><b>${esc(u.title)}</b><small>${inDaysLabel(u.date, now)} · ${dayShort(u.date)} · ${u.sub}</small></span>
                 <span class="row-end"><b class="muted">${u.amount > 0 ? '+' : ''}${eurAbs(u.amount)}</b></span>
               </div>`
@@ -447,8 +450,8 @@ function tangentCircle(A, B, r, gap) {
   return p1.y > p2.y ? p1 : p2;
 }
 
-const bubble = (c, color, value, label, action, extra) =>
-  `<button class="bubble" data-a="${action}" ${extra || ''} style="left:${(c.x - c.r).toFixed(1)}px;top:${(c.y - c.r).toFixed(1)}px;width:${(c.r * 2).toFixed(1)}px;height:${(c.r * 2).toFixed(1)}px;background:${color}"><b>${eur0(value)}</b><span>${label}</span></button>`;
+const bubble = (c, color, value, label, action, extra, key) =>
+  `<button class="bubble" data-key="bub-${key}" data-a="${action}" ${extra || ''} style="left:${(c.x - c.r).toFixed(1)}px;top:${(c.y - c.r).toFixed(1)}px;width:${(c.r * 2).toFixed(1)}px;height:${(c.r * 2).toFixed(1)}px;background:${color}"><b>${eur0(value)}</b><span>${label}</span></button>`;
 
 function statsOverviewBubbles(st) {
   const vmax = Math.max(st.income, st.spend, st.invest, 1);
@@ -474,9 +477,9 @@ function statsOverviewBubbles(st) {
     c.y += 8 - minY;
   });
   return `<div class="bubbles" style="height:${(maxY - minY + 16).toFixed(0)}px"><div class="bubbles-in" style="width:${W}px">
-    ${bubble(A, 'var(--green)', st.income, 'Einnahmen', 'statMode', 'data-mode="income"')}
-    ${bubble(B, '#7a3ff0', st.spend, 'Ausgaben', 'statMode', 'data-mode="spend"')}
-    ${bubble(C, '#0a5cff', st.invest, 'Investments', 'statMode', 'data-mode="invest"')}
+    ${bubble(A, 'var(--green)', st.income, 'Einnahmen', 'statMode', 'data-mode="income"', 'income')}
+    ${bubble(B, '#7a3ff0', st.spend, 'Ausgaben', 'statMode', 'data-mode="spend"', 'spend')}
+    ${bubble(C, '#0a5cff', st.invest, 'Investments', 'statMode', 'data-mode="invest"', 'invest')}
   </div></div>`;
 }
 
@@ -491,7 +494,7 @@ function statsCategoryBubbles(st) {
     const x = 96 + col * 106;
     const y = top ? 58 + (col % 2 ? -10 : 8) : 166 + (col % 2 ? -6 : 10);
     const op = 0.55 + 0.45 * Math.sqrt(c.amount / vmax);
-    html += bubble({ x, y, r }, `rgba(108,58,232,${op.toFixed(2)})`, c.amount, esc(c.name), 'statCat', `data-cat="${esc(c.name)}"`);
+    html += bubble({ x, y, r }, `rgba(108,58,232,${op.toFixed(2)})`, c.amount, esc(c.name), 'statCat', `data-cat="${esc(c.name)}"`, 'cat-' + i);
     width = Math.max(width, x + r + 28);
   });
   if (!st.cats.length) html += '<p class="empty" style="padding-top:90px;padding-left:80px">Keine Ausgaben in diesem Monat.</p>';
@@ -499,6 +502,7 @@ function statsCategoryBubbles(st) {
 }
 
 SHEETS.stats = {
+  viewKey: (p) => p.mode || 'overview',
   html(p) {
     const nowMk = monthKey(Date.now());
     if (p.mk === undefined) p.mk = nowMk;
@@ -551,7 +555,7 @@ const SEARCH_CATS = [
 ];
 
 function insRow(ins, action, slim) {
-  return `<button class="row ${slim ? 'slim' : ''}" data-a="${action || 'searchPick'}" data-iid="${ins.id}">
+  return `<button class="row ${slim ? 'slim' : ''}" data-key="ins-${ins.id}" data-a="${action || 'searchPick'}" data-iid="${ins.id}">
     <span class="row-ic">${insIcon(ins)}</span>
     <span class="row-main"><b>${esc(ins.name)}</b>${slim ? '' : `<small>${eur(S.market[ins.id].price)}</small>`}</span>
     <span class="row-end">${chgHTML(S.market[ins.id].day)}</span>
@@ -567,6 +571,7 @@ function ipoCards() {
 }
 
 SHEETS.search = {
+  viewKey: (p) => ((p.q || '').trim() ? 'q' : p.cat || 'home'),
   html(p) {
     const q = (p.q || '').trim().toLowerCase();
     if (q) {

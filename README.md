@@ -7,10 +7,10 @@ Alle Namen, Beträge, Kurse und IBANs sind zufällig erzeugt. Es gibt kein Login
 
 ## Starten
 
-- **Am Rechner:** `index.html` im Browser öffnen. Die App erscheint in einem Handy-Rahmen.
-- **Am Handy:** Die Datei hosten (z. B. GitHub Pages: *Settings → Pages → Branch auswählen*) und die URL öffnen. Über „Zum Home-Bildschirm“ läuft sie im Vollbild ohne Browserleiste.
+- **Live:** <https://tr-dummy.pages.dev> (Cloudflare Pages). Am Handy öffnen und über „Zum Home-Bildschirm“ hinzufügen, dann läuft die App im Vollbild ohne Browserleiste. Die Seite ist für jeden mit dem Link erreichbar, aber von Suchmaschinen ausgeschlossen.
+- **Lokal:** `index.html` im Browser öffnen. Am Rechner erscheint die App in einem Handy-Rahmen.
 
-`index.html` ist eine einzelne, eigenständige Datei (CSS und JS inline) und funktioniert auch offline.
+`index.html` ist eine einzelne, eigenständige Datei (CSS, JS und Logos inline) und funktioniert auch offline.
 
 ## Zufallsdaten
 
@@ -28,7 +28,7 @@ Alle Namen, Beträge, Kurse und IBANs sind zufällig erzeugt. Es gibt kein Login
 | „Überweisung“ → „Umbuchen“ | Geld sofort zwischen Konten verschieben (Konten wählbar, Tauschen-Knopf, Schnellbeträge) |
 | Karten im Unterkonto | Sparziel, monatliche Regel (Dauerauftrag vom Hauptkonto), Kartenverknüpfung, Details |
 | Karte | Auswählen, von welchem Konto Kartenzahlungen abgebucht werden, und in welches Unterkonto aufgerundet wird. „Kartenzahlung simulieren“ zeigt das live |
-| Details | IBAN kopieren, Name/Symbol ändern, Unterkonto schließen (Guthaben geht zurück aufs Hauptkonto) |
+| Details | IBAN kopieren, Name, Symbol und Farbe ändern, Unterkonto schließen (Guthaben geht zurück aufs Hauptkonto) |
 | Transaktionen, Statistik | Filter-Chips je Konto |
 | Kaufen, Sparpläne | „Zahlen mit“ lässt ein Unterkonto als Quelle wählen |
 
@@ -42,18 +42,38 @@ Der Rest der App (Portfolio mit Chart, Suche, Wertpapier-Details, Kaufen/Verkauf
 4. Karte → Aufrunden aktivieren → „Kartenzahlung simulieren“.
 5. Zurück zur Übersicht: Split aller Konten, Transaktionen und Statistik je Konto filtern.
 
+## Aktien, Logos und Symbole
+
+- Aktien und Kryptowährungen sind echte Titel mit ihren echten Logos; viele Händler in den Transaktionen ebenfalls. **Kurse, Renditen und Umsätze sind erfunden.**
+- Die Logos stammen als Vektordaten aus dem Paket [simple-icons](https://simpleicons.org) (CC0) und werden mit `tools/make-logos.mjs` nach `src/js/logos.js` übernommen. Die Marken gehören ihren Inhabern – gedacht ist das für die private Präsentation, nicht für eine Veröffentlichung.
+- Unterkonten haben schlichte Linien-Symbole und eine frei wählbare Farbe (keine Emojis).
+
+## Animationen
+
+Zustandswechsel werden nicht hart umgeschaltet: Ansichten gleiten ineinander (Tabs seitlich, Konten in die Tiefe), Sheets fahren weich ein und die Ebene dahinter tritt zurück, der Chart morpht zwischen Zeiträumen, Beträge zählen hoch, Schalter, Chips, Ringe, Sparziel-Balken und Statistik-Bubbles laufen in ihren neuen Zustand. Zwischen Portfolio und Cash kann man wischen, Sheets lassen sich nach unten wegziehen. Bei „Bewegung reduzieren“ im System sind die Animationen aus.
+
 ## Entwicklung
 
 ```
 src/index.html      Grundgerüst
 src/styles.css      Styling
-src/js/util.js      Zufall (Seed), Formatierung, Icons
+src/js/util.js      Zufall (Seed), Formatierung, Icons, Konto-Symbole
+src/js/logos.js     Marken-Logos (erzeugt, nicht von Hand bearbeiten)
 src/js/data.js      Datenpools und Generator
 src/js/store.js     Zustand, Speicherung, Aktionen auf den Daten
 src/js/charts.js    Kursverläufe und SVG-Charts
 src/js/views.js     Hauptansichten (Portfolio, Cash, Profil)
 src/js/sheets.js    Alle Sheets (Transaktionen, Umbuchen, Suche, …)
-src/js/app.js       Rendering, Events, Sheet-Stack
+src/js/app.js       Rendering (DOM-Abgleich, Übergänge), Events, Sheet-Stack
+tools/              Logo-Import und Deployment
 ```
 
-Zum Entwickeln `src/index.html` direkt öffnen. `node build.mjs` schreibt daraus die einzelne `index.html` im Hauptverzeichnis (keine Abhängigkeiten nötig).
+Zum Entwickeln `src/index.html` direkt öffnen. `node build.mjs` schreibt daraus die einzelne `index.html` im Hauptverzeichnis und den Ordner `dist/` zum Ausliefern (keine Abhängigkeiten nötig).
+
+## Deployment (Cloudflare Pages)
+
+```
+CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… tools/deploy-pages.sh
+```
+
+Das Skript baut, bettet `dist/` in einen kleinen Pages-Worker ein und legt über die Cloudflare-API ein neues Deployment des Projekts `tr-dummy` an. Das Token braucht das Recht „Cloudflare Pages: Edit“. Alternativ: `npx wrangler pages deploy dist --project-name=tr-dummy`.

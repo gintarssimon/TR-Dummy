@@ -182,3 +182,51 @@ const ICON = {
   g_trash: svg('<path d="M3.600 4.800h8.800M6.400 4.800V3.400h3.200v1.400M4.800 4.800l.5 7.800h5.400l.5-7.800"/>', '16 16', 'stroke-width="1.600"'),
   g_pen: svg('<path d="M3.400 12.600l.5-2.600 6.400-6.400 2.100 2.100L6 12.100z"/>', '16 16', 'stroke-width="1.600"'),
 };
+
+/* ---------- Symbole für Unterkonten ---------- */
+
+const ACC_ICONS = {
+  plane: '<path d="M21 3L3 10.400l6.800 2.800L12.600 20z"/><path d="M9.800 13.200L21 3"/>',
+  shield: '<path d="M12 3l7 2.800v5.400c0 4.400-2.900 7.700-7 9.800-4.100-2.100-7-5.400-7-9.800V5.800z"/><path d="M9 12l2.200 2.200 4-4.200"/>',
+  home: '<path d="M4 10.800L12 4l8 6.800"/><path d="M6 9.500V20h12V9.500"/><path d="M10 20v-5.500h4V20"/>',
+  bike: '<circle cx="6" cy="16" r="3.500"/><circle cx="18" cy="16" r="3.500"/><path d="M6 16l3.500-7.500h6L18 16"/><path d="M9.500 8.500L12 16l3.500-7.500"/><path d="M8 5.800h3M14.800 5.800H17"/>',
+  gift: '<path d="M4 11h16v9H4z"/><path d="M3 7.500h18V11H3z"/><path d="M12 7.500V20"/><path d="M12 7.500C10.500 4.500 7 4 7 6s2.500 1.500 5 1.500zM12 7.500C13.500 4.500 17 4 17 6s-2.500 1.500-5 1.500z"/>',
+  car: '<path d="M4 16.500v-3.300l1.700-4.300a2 2 0 011.900-1.300h8.800a2 2 0 011.900 1.300l1.700 4.300v3.300z"/><path d="M4.200 12.800h15.600"/><path d="M6.500 16.500v2.200M17.500 16.500v2.200"/>',
+  box: '<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4"/><path d="M12 12v8"/>',
+  receipt: '<path d="M6 3.500h12v17l-3-1.800-3 1.800-3-1.800-3 1.800z"/><path d="M9 8.500h6M9 12.500h6"/>',
+  cap: '<path d="M2.500 9.500L12 5l9.500 4.500L12 14z"/><path d="M6.500 11.600V16c1.800 1.900 9.200 1.900 11 0v-4.400"/><path d="M21.500 9.500V14"/>',
+  heart: '<path d="M12 20s-7.500-4.600-7.500-10.200A4.300 4.300 0 0112 7.200a4.300 4.300 0 017.500 2.600C19.500 15.400 12 20 12 20z"/>',
+  star: '<path d="M12 3.800l2.500 5.200 5.700.800-4.100 4 1 5.700L12 16.800l-5.100 2.700 1-5.700-4.100-4 5.700-.800z"/>',
+  music: '<path d="M9 17.500V6l10-2v11.500"/><circle cx="6.500" cy="17.500" r="2.500"/><circle cx="16.500" cy="15.500" r="2.500"/>',
+  laptop: '<rect x="5" y="5" width="14" height="10" rx="1.500"/><path d="M3 19h18"/>',
+  umbrella: '<path d="M12 4.500a8 8 0 018 8H4a8 8 0 018-8z"/><path d="M12 12.500V18a2 2 0 01-4 0"/><path d="M12 3v1.500"/>',
+  sofa: '<path d="M6 11V8.500a2 2 0 012-2h8a2 2 0 012 2V11"/><path d="M3.500 13a2 2 0 014 0v1.500h9V13a2 2 0 014 0v4.500h-17z"/><path d="M6 17.500v2M18 17.500v2"/>',
+  gamepad: '<path d="M8 8h8a4.500 4.500 0 014.400 5.500l-.5 2.400a2.300 2.300 0 01-4.100.9L14.500 15h-5l-1.300 1.800a2.300 2.300 0 01-4.100-.9l-.5-2.400A4.500 4.500 0 018 8z"/><path d="M8 10.800v2.400M6.800 12h2.400"/><circle cx="15.800" cy="12" r=".7" fill="currentColor"/>',
+  mountain: '<path d="M3 19l6.200-10.500 3.300 5.300 2.500-3.300L21 19z"/>',
+  phone: '<rect x="7" y="3" width="10" height="18" rx="2.500"/><path d="M11 17.800h2"/>',
+  leaf: '<path d="M5 19C5 10.500 10 5.500 19.500 5c0 9-4.500 14-12 14"/><path d="M5 19c2-4.500 5-7.500 9.500-9.500"/>',
+  ring: '<circle cx="12" cy="14.500" r="5.500"/><path d="M9.500 4h5l1.800 2.300L12 9 7.700 6.300z"/>',
+};
+const ACC_ICON_KEYS = Object.keys(ACC_ICONS);
+const accIconSVG = (key) => svg(ACC_ICONS[key] || ACC_ICONS.shield, '24 24', 'stroke-width="2"');
+
+/* ---------- Marken-Logos (Daten in logos.js) ---------- */
+
+/**
+ * Kachelfarben zu einem Logo: das Zeichen steht in Markenfarbe auf weißer Kachel – so bleibt jede Form
+ * (auch vollflächige Signets wie Kreise oder Badges) originalgetreu. Sehr helle Marken bekommen eine dunkle Kachel.
+ */
+function logoColors(slug) {
+  const hex = LOGOS[slug][0];
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return lum > 0.7 ? ['#1d1d21', '#' + hex] : ['#ffffff', '#' + hex];
+}
+const logoUse = (slug) => `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><use href="#lg-${slug}"/></svg>`;
+/** Alle Logos einmal als SVG-Symbole ins Dokument legen, Zeilen verweisen nur per <use> darauf. */
+function mountLogoSprite() {
+  const symbols = Object.keys(LOGOS).map((k) => `<symbol id="lg-${k}" viewBox="0 0 24 24"><path d="${LOGOS[k][1]}"/></symbol>`).join('');
+  document.body.insertAdjacentHTML('afterbegin', `<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">${symbols}</svg>`);
+}

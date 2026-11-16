@@ -3,11 +3,15 @@
 /* ---------- Rendering ---------- */
 
 let $main;
+let $head;
+let $view;
 let $sheets;
 let $toast;
-const cache = { main: '', resetScroll: false };
+const cache = { head: null, body: null, key: null, force: false };
 let sheetSeq = 0;
 let suppressClickUntil = 0;
+const EASE = 'cubic-bezier(.32,.72,0,1)';
+const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function saveScroll(root) {
   const m = {};
@@ -20,24 +24,181 @@ function restoreScroll(root, m) {
   });
 }
 
-function renderMain() {
-  const html = headerHTML() + `<div class="view" id="view">${viewMain()}</div>` + bottomBarHTML();
-  if (html === cache.main && !cache.resetScroll) return;
-  const old = document.getElementById('view');
-  const top = old ? old.scrollTop : 0;
-  const sc = saveScroll($main);
-  if (html !== cache.main) {
-    $main.innerHTML = html;
-    cache.main = html;
+/* ---------- DOM-Abgleich ----------
+ * Statt innerHTML komplett zu ersetzen, wird der bestehende Baum an das neue HTML angeglichen.
+ * Elemente bleiben dadurch erhalten, und CSS-Übergänge (Schalter, Chips, Ringe, Balken, Bubbles) laufen weich. */
+
+let inserted = null;
+const keyOf = (n) => (n.nodeType === 1 ? n.getAttribute('data-key') : null);
+
+function morphChildren(parent, next) {
+  let keyed = null;
+  for (let c = parent.firstChild; c; c = c.nextSibling) {
+    const k = keyOf(c);
+    if (k) (keyed || (keyed = new Map())).set(k, c);
   }
-  const view = document.getElementById('view');
-  view.scrollTop = cache.resetScroll ? 0 : top;
-  if (!cache.resetScroll) restoreScroll($main, sc);
-  cache.resetScroll = false;
+  let cur = parent.firstChild;
+  let n = next.firstChild;
+  while (n) {
+    const following = n.nextSibling;
+    const k = keyOf(n);
+    let match = null;
+    if (k) {
+      const cand = keyed && keyed.get(k);
+      if (cand && cand.tagName === n.tagName) {
+        match = cand;
+        keyed.delete(k);
+      }
+    } else if (cur && cur.nodeType === n.nodeType && !keyOf(cur) && (n.nodeType !== 1 || cur.tagName === n.tagName)) {
+      match = cur;
+    }
+    if (match) {
+      if (match === cur) cur = cur.nextSibling;
+      else parent.insertBefore(match, cur);
+      morphNode(match, n);
+    } else {
+      parent.insertBefore(n, cur);
+      if (inserted && n.nodeType === 1) inserted.push(n);
+    }
+    n = following;
+  }
+  while (cur) {
+    const nx = cur.nextSibling;
+    parent.removeChild(cur);
+    cur = nx;
+  }
 }
 
+function morphNode(a, b) {
+  if (a.nodeType !== 1) {
+    if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue;
+    return;
+  }
+  const num0 = a.getAttribute('data-num');
+  const aa = a.attributes;
+  for (let i = aa.length - 1; i >= 0; i--) if (!b.hasAttribute(aa[i].name)) a.removeAttribute(aa[i].name);
+  const ba = b.attributes;
+  for (let i = 0; i < ba.length; i++) if (a.getAttribute(ba[i].name) !== ba[i].value) a.setAttribute(ba[i].name, ba[i].value);
+  if (a.tagName === 'INPUT') return;
+  morphChildren(a, b);
+  const num1 = a.getAttribute('data-num');
+  if (num0 !== null && num1 !== null && num0 !== num1) tweenNumber(a, +num0, +num1);
+}
+
+function morphInto(root, html) {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  inserted = [];
+  morphChildren(root, tpl.content);
+  const list = inserted;
+  inserted = null;
+  // wenige neue Zeilen blenden weich ein; bei großen Listenwechseln würde das nur flackern
+  if (list.length && list.length <= 10) list.forEach((el) => el.matches('.row, .card') && el.classList.add('m-in'));
+}
+
+/** Beträge zählen weich vom alten zum neuen Wert. */
+const tweens = new WeakMap();
+function tweenNumber(el, from, to) {
+  if (reduceMotion()) return;
+  const token = {};
+  tweens.set(el, token);
+  const t0 = performance.now();
+  const step = (now) => {
+    if (tweens.get(el) !== token || !el.isConnected) return;
+    const t = clamp((now - t0) / 650, 0, 1);
+    const e = 1 - Math.pow(1 - t, 4);
+    el.textContent = eur(t >= 1 ? to : from + (to - from) * e);
+    if (t < 1) requestAnimationFrame(step);
+  };
+  step(t0);
+}
+
+function fadeIn(el, dy) {
+  if (reduceMotion() || !el.animate) return;
+  el.animate([{ opacity: 0, transform: 'translateY(' + (dy === undefined ? 12 : dy) + 'px)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: EASE });
+}
+
+/* ---------- Hauptansicht ---------- */
+
+function mountMain() {
+  $main.innerHTML = '<div id="head"></div><div id="viewwrap"><div class="view" id="view"></div></div>' + bottomBarHTML();
+  $head = document.getElementById('head');
+  $view = document.getElementById('view');
+}
+
+/** Wechsel zwischen Ansichten: die alte gleitet als Kopie hinaus, die neue hinein. */
+function transitionMain(html, fromKey, toKey) {
+  const wrap = $view.parentNode;
+  wrap.querySelectorAll('.view-ghost').forEach((g) => g.remove());
+  if ($view.getAnimations) $view.getAnimations().forEach((a) => a.cancel());
+  if (reduceMotion() || !$view.animate) {
+    $view.innerHTML = html;
+    $view.scrollTop = 0;
+    return;
+  }
+  const ghost = $view.cloneNode(true);
+  ghost.removeAttribute('id');
+  ghost.classList.add('view-ghost');
+  ghost.setAttribute('aria-hidden', 'true');
+  const top = $view.scrollTop;
+  const sc = saveScroll($view);
+  wrap.insertBefore(ghost, $view);
+  ghost.scrollTop = top;
+  restoreScroll(ghost, sc);
+  $view.innerHTML = html;
+  $view.scrollTop = 0;
+
+  const fromTab = fromKey.split(':')[0];
+  const toTab = toKey.split(':')[0];
+  let out;
+  let inn;
+  let dur = 460;
+  if (fromTab !== toTab) {
+    const dir = TAB_ORDER[toTab] > TAB_ORDER[fromTab] ? 1 : -1;
+    out = [{ transform: 'translateX(0)', opacity: 1 }, { transform: 'translateX(' + -dir * 28 + '%)', opacity: 0 }];
+    inn = [{ transform: 'translateX(' + dir * 100 + '%)' }, { transform: 'translateX(0)' }];
+  } else if (fromKey === toKey) {
+    out = [{ opacity: 1 }, { opacity: 0 }];
+    inn = [{ opacity: 0 }, { opacity: 1 }];
+    dur = 360;
+  } else {
+    const deeper = /:(all|overview)$/.test(fromKey);
+    out = deeper ? [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.955)' }] : [{ opacity: 1, transform: 'translateY(0)' }, { opacity: 0, transform: 'translateY(34px)' }];
+    inn = deeper ? [{ opacity: 0, transform: 'translateY(34px)' }, { opacity: 1, transform: 'translateY(0)' }] : [{ opacity: 0, transform: 'scale(.955)' }, { opacity: 1, transform: 'scale(1)' }];
+    dur = 400;
+  }
+  const done = () => ghost.remove();
+  const ga = ghost.animate(out, { duration: dur * 0.8, easing: EASE, fill: 'forwards' });
+  ga.onfinish = done;
+  ga.oncancel = done;
+  $view.animate(inn, { duration: dur, easing: EASE });
+}
+
+function renderMain() {
+  const head = headerHTML();
+  if (head !== cache.head) {
+    if (cache.head === null) $head.innerHTML = head;
+    else morphInto($head, head);
+    cache.head = head;
+  }
+  const key = mainViewKey();
+  const body = viewMain();
+  if (cache.key === null) $view.innerHTML = body;
+  else if (key !== cache.key || cache.force) transitionMain(body, cache.key, key);
+  else if (body !== cache.body) morphInto($view, body);
+  cache.key = key;
+  cache.body = body;
+  cache.force = false;
+  syncCharts($view);
+}
+
+/* ---------- Sheets ---------- */
+
 function hydrate(root, sheet) {
-  root.querySelectorAll('[data-f]').forEach((inp) => (inp.value = sheet.p[inp.dataset.f] || ''));
+  root.querySelectorAll('[data-f]').forEach((inp) => {
+    const v = sheet.p[inp.dataset.f] || '';
+    if (inp.value !== v) inp.value = v;
+  });
 }
 
 function sheetNode(sheet) {
@@ -48,21 +209,33 @@ function renderSheetNode(sheet, node) {
   const def = SHEETS[sheet.type];
   const body = def.html.call(def, sheet.p, sheet);
   const bottom = def.bottom ? def.bottom.call(def, sheet.p, sheet) : '';
+  const vk = def.viewKey ? def.viewKey(sheet.p) : '';
   const $body = node.children[1];
   const $foot = node.children[2];
+  const first = node._body === undefined;
+  const switched = !first && node._vk !== vk;
   if (node._body !== body) {
-    const sc = saveScroll($body);
-    $body.innerHTML = body;
+    if (first) $body.innerHTML = body;
+    else if (switched) {
+      $body.innerHTML = body;
+      $body.scrollTop = 0;
+      fadeIn($body);
+    } else morphInto($body, body);
     node._body = body;
-    restoreScroll($body, sc);
     hydrate($body, sheet);
   }
   if (node._bottom !== bottom) {
-    $foot.innerHTML = bottom;
+    if (first) $foot.innerHTML = bottom;
+    else if (switched) {
+      $foot.innerHTML = bottom;
+      fadeIn($foot, 0);
+    } else morphInto($foot, bottom);
     $foot.hidden = !bottom;
     node._bottom = bottom;
     hydrate($foot, sheet);
   }
+  node._vk = vk;
+  syncCharts($body);
 }
 
 function renderSheets() {
@@ -70,11 +243,12 @@ function renderSheets() {
   Array.from($sheets.children).forEach((node) => {
     if (!keys.has(node.dataset.key) && !node.classList.contains('leave')) {
       node.classList.add('leave');
+      node.classList.remove('under');
       node.style.transform = '';
-      setTimeout(() => node.remove(), 400);
+      setTimeout(() => node.remove(), 520);
     }
   });
-  ui.sheets.forEach((sheet) => {
+  ui.sheets.forEach((sheet, i) => {
     let node = sheetNode(sheet);
     if (!node) {
       node = document.createElement('section');
@@ -86,8 +260,11 @@ function renderSheets() {
       void node.offsetHeight;
       requestAnimationFrame(() => node.classList.remove('enter'));
     }
+    node.classList.toggle('under', i < ui.sheets.length - 1);
     renderSheetNode(sheet, node);
   });
+  // die Ebene darunter tritt zurück, solange ein Sheet offen ist
+  $main.classList.toggle('behind', ui.sheets.length > 0);
 }
 
 function render() {
@@ -128,8 +305,8 @@ function openNewAccount() {
     toast('Maximal ' + MAX_SUBS + ' Unterkonten möglich');
     return;
   }
-  const used = S.accounts.map((a) => a.emoji);
-  openSheet('newAccount', { name: '', emoji: EMOJIS.find((e) => !used.includes(e)) || EMOJIS[0] });
+  const used = S.accounts.map((a) => a.icon);
+  openSheet('newAccount', { name: '', icon: ACC_ICON_KEYS.find((k) => !used.includes(k)) || ACC_ICON_KEYS[0], color: nextColor() });
 }
 
 function openPlanAmount(iid) {
@@ -157,12 +334,21 @@ function resetUi(tab) {
   ui.cashAcc = 'all';
   ui.pfAcc = 'brokerage';
   ui.pfOverview = false;
-  cache.resetScroll = true;
+  cache.force = true;
+}
+
+function pulse(sheet, sel) {
+  const node = sheetNode(sheet);
+  const el = node && node.querySelector(sel);
+  if (el && el.animate && !reduceMotion()) el.animate([{ transform: 'scale(1.05)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
 }
 
 const ACTIONS = {
   tab(d) {
-    cache.resetScroll = true;
+    if (ui.tab === d.tab) {
+      $view.scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
+      return;
+    }
     ui.tab = d.tab;
     render();
   },
@@ -176,18 +362,15 @@ const ACTIONS = {
   },
   pfOverview() {
     ui.pfOverview = !ui.pfOverview;
-    cache.resetScroll = true;
     render();
   },
   pfAcc(d) {
     ui.pfAcc = d.id;
     ui.pfOverview = false;
-    cache.resetScroll = true;
     render();
   },
   cashAcc(d) {
     ui.cashAcc = d.id;
-    cache.resetScroll = true;
     render();
   },
   sheet(d) {
@@ -206,7 +389,7 @@ const ACTIONS = {
   transferMenu() {
     openSheet('transferMenu');
   },
-  flowMove(d, sheet) {
+  flowMove() {
     closeSheetsOfType('transferMenu');
     if (!subAccounts().length) {
       toast('Eröffne zuerst ein Unterkonto');
@@ -246,12 +429,15 @@ const ACTIONS = {
 
   /* Betragseingabe */
   amtKey(d, sheet) {
-    sheet.p.amt = amtPress(sheet.p.amt || '', d.k);
+    const before = sheet.p.amt || '';
+    sheet.p.amt = amtPress(before, d.k);
     renderSheets();
+    if (sheet.p.amt !== before) pulse(sheet, '.amt');
   },
   amtQuick(d, sheet) {
     sheet.p.amt = toAmtString(+d.v);
     renderSheets();
+    pulse(sheet, '.amt');
   },
   amtRow(d, sheet) {
     const r = sheet.p.rows()[+d.i];
@@ -260,6 +446,9 @@ const ACTIONS = {
   amtSwap(d, sheet) {
     sheet.p.swap();
     renderSheets();
+    const node = sheetNode(sheet);
+    const sw = node && node.querySelector('.swap');
+    if (sw && sw.animate && !reduceMotion()) sw.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(180deg)' }], { duration: 380, easing: EASE });
   },
   amtConfirm(d, sheet) {
     const p = sheet.p;
@@ -270,20 +459,24 @@ const ACTIONS = {
       if (p.after) p.after();
       closeSheet(sheet);
       render();
-    }, 1150);
+    }, 1250);
   },
 
   /* Unterkonten */
   newAccount() {
     openNewAccount();
   },
-  naEmoji(d, sheet) {
-    sheet.p.emoji = d.e;
+  naIcon(d, sheet) {
+    sheet.p.icon = d.icon;
+    renderSheets();
+  },
+  naColor(d, sheet) {
+    sheet.p.color = d.color;
     renderSheets();
   },
   naSuggest(d, sheet) {
     sheet.p.name = d.name;
-    sheet.p.emoji = d.e;
+    sheet.p.icon = d.icon;
     renderSheets();
     hydrate(sheetNode(sheet), sheet);
   },
@@ -294,13 +487,14 @@ const ACTIONS = {
     if (p.editId) {
       const a = acc(p.editId);
       a.name = name;
-      a.emoji = p.emoji;
+      a.icon = p.icon;
+      a.color = p.color;
       save();
       closeSheet(sheet);
       toast('Gespeichert');
       return;
     }
-    const a = createAccount({ name, emoji: p.emoji });
+    const a = createAccount({ name, icon: p.icon, color: p.color });
     resetUi('cash');
     ui.cashAcc = a.id;
     render();
@@ -308,7 +502,7 @@ const ACTIONS = {
   },
   editAccount(d) {
     const a = acc(d.id);
-    openSheet('newAccount', { editId: a.id, name: a.name, emoji: a.emoji });
+    openSheet('newAccount', { editId: a.id, name: a.name, icon: a.icon, color: a.color });
   },
   editGoal(d) {
     openGoal(d.id);
@@ -390,6 +584,7 @@ const ACTIONS = {
   txView(d, sheet) {
     sheet.p.view = d.view;
     renderSheets();
+    sheetNode(sheet).children[1].scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
   },
   statView(d, sheet) {
     sheet.p.view = d.view;
@@ -403,7 +598,6 @@ const ACTIONS = {
     if (d.mode === 'income' || d.mode === 'invest') return ACTIONS.statList({ kind: d.mode }, sheet);
     sheet.p.mode = d.mode;
     renderSheets();
-    sheetNode(sheet).children[1].scrollTop = 0;
   },
   statList(d, sheet) {
     const p = sheet.p;
@@ -422,9 +616,7 @@ const ACTIONS = {
     sheet.p.cat = d.cat || null;
     sheet.p.q = '';
     renderSheets();
-    const node = sheetNode(sheet);
-    hydrate(node, sheet);
-    node.children[1].scrollTop = 0;
+    hydrate(sheetNode(sheet), sheet);
   },
   searchPick(d, sheet) {
     if (sheet && sheet.p.pick) return sheet.p.pick(d.iid);
@@ -488,7 +680,7 @@ function bindEvents() {
   app.addEventListener('click', (e) => {
     if (Date.now() < suppressClickUntil) return;
     const el = e.target.closest('[data-a]');
-    if (!el || el.disabled) return;
+    if (!el || el.disabled || el.closest('.view-ghost')) return;
     const fn = ACTIONS[el.dataset.a];
     if (!fn) return;
     const node = el.closest('.sheet');
@@ -510,6 +702,9 @@ function bindEvents() {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && ui.sheets.length && !ui.sheets[ui.sheets.length - 1].p.done) closeSheet();
+  });
+  app.addEventListener('animationend', (e) => {
+    if (e.animationName === 'mIn') e.target.classList.remove('m-in');
   });
 
   /* Sheet nach unten wegziehen */
@@ -564,6 +759,34 @@ function bindEvents() {
   $sheets.addEventListener('touchend', endDrag);
   $sheets.addEventListener('touchcancel', endDrag);
 
+  /* Wischen zwischen Portfolio und Cash */
+  let swipe = null;
+  $main.addEventListener(
+    'touchstart',
+    (e) => {
+      swipe = null;
+      if (e.touches.length !== 1 || !e.target.closest('#viewwrap') || e.target.closest('[data-scroll], .chart')) return;
+      swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    },
+    { passive: true }
+  );
+  $main.addEventListener(
+    'touchend',
+    (e) => {
+      if (!swipe || !e.changedTouches.length) return;
+      const dx = e.changedTouches[0].clientX - swipe.x;
+      const dy = e.changedTouches[0].clientY - swipe.y;
+      swipe = null;
+      if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.8) return;
+      const next = dx < 0 ? { portfolio: 'cash' } : { cash: 'portfolio', profile: 'cash' };
+      if (!next[ui.tab]) return;
+      suppressClickUntil = Date.now() + 350;
+      ui.tab = next[ui.tab];
+      render();
+    },
+    { passive: true }
+  );
+
   bindCharts(app);
 }
 
@@ -577,6 +800,8 @@ function init() {
   $sheets = document.getElementById('sheets');
   $toast = document.getElementById('toast');
   loadState();
+  mountLogoSprite();
+  mountMain();
   bindEvents();
   render();
   tickClock();

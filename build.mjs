@@ -1,6 +1,6 @@
 // Baut aus src/ eine einzelne, eigenständige index.html (CSS und JS inline).
 // Aufruf: node build.mjs
-import { readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -23,3 +23,13 @@ html = html.replace('</head>', '<link rel="manifest" href="manifest.webmanifest"
 
 writeFileSync(join(root, 'index.html'), html);
 console.log(`index.html geschrieben (${(html.length / 1024).toFixed(0)} KB)`);
+
+// dist/: nur das, was ausgeliefert wird (für Cloudflare Pages o. Ä.)
+const dist = join(root, 'dist');
+rmSync(dist, { recursive: true, force: true });
+mkdirSync(dist);
+writeFileSync(join(dist, 'index.html'), html);
+cpSync(join(root, 'manifest.webmanifest'), join(dist, 'manifest.webmanifest'));
+cpSync(join(root, 'icons'), join(dist, 'icons'), { recursive: true });
+writeFileSync(join(dist, '_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n');
+console.log('dist/ aktualisiert');

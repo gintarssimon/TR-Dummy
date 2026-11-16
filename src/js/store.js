@@ -67,11 +67,11 @@ function upcoming(view) {
   const out = [];
   S.plans.forEach((p) => {
     if (view !== 'all' && p.accountId !== view) return;
-    out.push({ key: 'plan:' + p.id, title: INSTR[p.iid].name, sub: 'Sparplan', amount: -p.amount, date: nextDayOfMonth(p.day, now), accountId: p.accountId, icon: 'g_chart', planId: p.id });
+    out.push({ key: 'plan:' + p.id, title: INSTR[p.iid].name, iid: p.iid, sub: 'Sparplan', amount: -p.amount, date: nextDayOfMonth(p.day, now), accountId: p.accountId, icon: 'g_chart', planId: p.id });
   });
   S.scheduled.forEach((s) => {
     if (view !== 'all' && s.accountId !== view) return;
-    out.push({ key: 'sched:' + s.id, title: s.title, sub: 'Abo', amount: -s.amount, date: nextDayOfMonth(s.day, now), accountId: s.accountId, icon: 'g_play' });
+    out.push({ key: 'sched:' + s.id, title: s.title, logo: s.logo || null, sub: 'Abo', amount: -s.amount, date: nextDayOfMonth(s.day, now), accountId: s.accountId, icon: 'g_play' });
   });
   subAccounts().forEach((a) => {
     if (!a.rule) return;
@@ -110,7 +110,7 @@ const posPerf = (p) => (p.invested > 0 ? (p.value / p.invested - 1) * 100 : 0);
 /* ---------- Mutationen ---------- */
 
 function pushTx(o) {
-  const t = Object.assign({ id: 't' + S.seq++, date: Date.now(), status: '', cancelled: false, fx: null, person: false, sub: '', pair: null, dir: null, other: null, iid: null }, o);
+  const t = Object.assign({ id: 't' + S.seq++, date: Date.now(), status: '', cancelled: false, fx: null, person: false, sub: '', pair: null, dir: null, other: null, iid: null, logo: null }, o);
   t.amount = round2(t.amount);
   S.tx.unshift(t);
   return t;
@@ -151,7 +151,7 @@ function nextColor() {
 
 function createAccount(o) {
   const R = makeRand((S.seed * 31 + S.seq * 7919) >>> 0);
-  const a = { id: 'a' + S.seq++, name: o.name.trim(), main: false, fixed: false, emoji: o.emoji, color: nextColor(), balance: 0, iban: makeIban(R), goal: o.goal || null, rule: null, roundUp: false, createdAt: Date.now() };
+  const a = { id: 'a' + S.seq++, name: o.name.trim(), main: false, fixed: false, icon: o.icon, color: o.color || nextColor(), balance: 0, iban: makeIban(R), goal: o.goal || null, rule: null, roundUp: false, createdAt: Date.now() };
   S.accounts.push(a);
   save();
   return a;
@@ -208,7 +208,7 @@ function simulateCardPayment() {
     m = R.pick(pool.filter((x) => x[2] <= 9));
   }
   from.balance = round2(from.balance - amount);
-  pushTx({ accountId: from.id, title: m[0], amount: -amount, kind: 'card', category: m[1], icon: CATEGORIES[m[1]] });
+  pushTx({ accountId: from.id, title: m[0], amount: -amount, kind: 'card', category: m[1], icon: CATEGORIES[m[1]], logo: m[5] || null });
   let rounded = 0;
   const target = S.accounts.find((a) => a.roundUp && a.id !== from.id);
   if (target) {

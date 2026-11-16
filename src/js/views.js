@@ -12,21 +12,43 @@ const ui = {
   sheets: [],
 };
 
+const TAB_ORDER = { portfolio: 0, cash: 1, profile: 2 };
+/** Schlüssel der aktuellen Hauptansicht – wechselt er, wird animiert umgeblendet statt nur aktualisiert. */
+function mainViewKey() {
+  if (ui.tab === 'portfolio') return 'portfolio:' + (ui.pfOverview ? 'overview' : ui.pfAcc);
+  if (ui.tab === 'cash') return 'cash:' + ui.cashAcc;
+  return 'profile';
+}
+
 /* ---------- Bausteine ---------- */
 
+/** Betrag, der bei Änderung weich hochzählt (siehe tweenNumber). */
+const num = (v, cls, extra) => `<span${cls ? ` class="${cls}"` : ''} data-num="${round2(v)}"${extra ? ' ' + extra : ''}>${eur(v)}</span>`;
+
 function insIcon(ins, cls) {
+  if (ins.logo && LOGOS[ins.logo]) {
+    const c = logoColors(ins.logo);
+    return `<span class="ins-ic logo ${cls || ''}" style="background:${c[0]};color:${c[1]}">${logoUse(ins.logo)}</span>`;
+  }
+  const c = TILE_COLOR[ins.type] || ['#fff', '#000'];
   const fs = [0, 12, 9.5, 7.5, 6.2][Math.min(4, ins.tag.length)];
-  return `<span class="ins-ic ${cls || ''}" style="background:${ins.bg};color:${ins.fg}"><i style="font-size:${fs}px">${esc(ins.tag)}</i></span>`;
+  return `<span class="ins-ic ${cls || ''}" style="background:${c[0]};color:${c[1]}"><i style="font-size:${fs}px">${esc(ins.tag)}</i></span>`;
 }
 
 function accAvatar(a, cls) {
-  const inner = a.main ? '<i class="av-eur">€</i>' : `<i class="av-emoji">${a.emoji}</i>`;
-  return `<span class="acc-av ${cls || ''}" style="--c:${a.color}">${inner}</span>`;
+  return `<span class="acc-av ${a.main ? 'main' : ''} ${cls || ''}" style="--c:${a.color}">${a.main ? '<i class="av-eur">€</i>' : accIconSVG(a.icon)}</span>`;
+}
+
+function brandIcon(slug) {
+  const c = logoColors(slug);
+  return `<span class="tx-ic logo" style="background:${c[0]};color:${c[1]}">${logoUse(slug)}</span>`;
 }
 
 function txIcon(t) {
   if (t.icon === 'pct') return '<span class="tx-ic pct">%</span>';
   if (t.person) return `<span class="tx-av">${esc(t.title.replace(/^Hausverwaltung /, '')[0] || '?')}</span>`;
+  if (t.logo && LOGOS[t.logo]) return brandIcon(t.logo);
+  if (t.iid && INSTR[t.iid]) return insIcon(INSTR[t.iid]);
   return `<span class="tx-ic">${ICON[t.icon] || ICON.g_doc}</span>`;
 }
 
@@ -48,8 +70,8 @@ function txRow(t, view) {
   if (t.status) sub.push(t.status);
   else if (t.sub) sub.push(t.sub);
   if (view === 'all' && t.kind !== 'internal' && t.accountId !== 'main') sub.push(accName(t.accountId));
-  return `<button class="row" data-a="txDetail" data-id="${t.id}" data-view="${view}">
-    <span class="row-ic">${txIcon(t)}</span>
+  return `<button class="row" data-key="tx-${t.id}" data-a="txDetail" data-id="${t.id}" data-view="${view}">
+    <span class="row-ic tx">${txIcon(t)}</span>
     <span class="row-main"><b>${esc(txTitle(t, view))}</b><small>${esc(sub.join(' · '))}</small></span>
     <span class="row-end">${txAmountHTML(t, view)}${t.fx ? `<small>${nf2.format(t.fx.amount)}${NBSP}${t.fx.cur}</small>` : ''}</span>
   </button>`;
@@ -58,7 +80,7 @@ function txRow(t, view) {
 function upcomingSummaryRow(view) {
   const soon = upcomingSoon(view);
   if (!soon.list.length) return '';
-  return `<button class="row" data-a="sheet" data-sheet="planned" data-view="${view}">
+  return `<button class="row" data-key="soon" data-a="sheet" data-sheet="planned" data-view="${view}">
     <span class="row-ic"><span class="tx-ic ghost">${ICON.g_minus}<em>${soon.list.length}</em></span></span>
     <span class="row-main"><b>Demnächst</b><small>Nächste 14 Tage</small></span>
     <span class="row-end"><b class="muted">${eur(soon.total)}</b></span>
@@ -67,9 +89,9 @@ function upcomingSummaryRow(view) {
 
 function accountRow(a, total, action) {
   const share = total > 0 ? a.balance / total : 0;
-  return `<button class="row" data-a="${action || 'cashAcc'}" data-id="${a.id}">
+  return `<button class="row" data-key="acc-${a.id}" data-a="${action || 'cashAcc'}" data-id="${a.id}">
     <span class="row-ic">${accAvatar(a)}</span>
-    <span class="row-main"><b>${esc(a.name)}</b><small>${eur(a.balance)}${a.goal ? ' · Ziel ' + eur0(a.goal) : ''}</small></span>
+    <span class="row-main"><b>${esc(a.name)}</b><small>${num(a.balance)}${a.goal ? ' · Ziel ' + eur0(a.goal) : ''}</small></span>
     <span class="row-end split"><b>${pct0(share * 100)}</b>${ringSVG(share, a.main ? '#ffffff' : a.color)}</span>
   </button>`;
 }
@@ -78,7 +100,7 @@ function goalBar(a) {
   if (!a.goal) return '';
   const p = clamp(a.balance / a.goal, 0, 1);
   return `<div class="goal"><div class="goal-track"><i style="width:${(p * 100).toFixed(1)}%;background:${a.color}"></i></div>
-    <div class="goal-meta"><span>${pct0(Math.floor(p * 100))} von ${eur0(a.goal)}</span><span>${p >= 1 ? 'Ziel erreicht 🎉' : 'Noch ' + eur(a.goal - a.balance)}</span></div></div>`;
+    <div class="goal-meta"><span>${pct0(Math.floor(p * 100))} von ${eur0(a.goal)}</span><span>${p >= 1 ? 'Ziel erreicht' : 'Noch ' + eur(a.goal - a.balance)}</span></div></div>`;
 }
 
 const tfHTML = (cur, action) => `<div class="tf">${TF_LIST.map(([k, l]) => `<button class="${k === cur ? 'on' : ''}" data-a="${action}" data-tf="${k}">${l}</button>`).join('')}</div>`;
@@ -114,9 +136,9 @@ function pfCardsHTML() {
 function positionRow(p) {
   const ins = INSTR[p.iid];
   const pct = ui.sort === 'buy' ? posPerf(p) : S.market[p.iid].day;
-  return `<button class="row" data-a="instrument" data-iid="${ins.id}">
+  return `<button class="row" data-key="pos-${ins.id}" data-a="instrument" data-iid="${ins.id}">
     <span class="row-ic">${insIcon(ins)}</span>
-    <span class="row-main"><b>${esc(ins.name)}</b><small>${eur(p.value)}</small></span>
+    <span class="row-main"><b>${esc(ins.name)}</b><small>${num(p.value)}</small></span>
     <span class="row-end">${chgHTML(pct)}</span>
   </button>`;
 }
@@ -140,7 +162,7 @@ function viewPortfolio() {
   const series = pfSeries(A.id, ui.tf);
   return `<div data-chart-root>
       <div class="hero">${label}
-        <div class="hero-line"><span class="hero-amount" data-chart-amount>${eur(total)}</span><span class="hero-delta" data-chart-delta>${deltaHTML(series.pct)}</span><span class="hero-date" data-chart-date></span></div>
+        <div class="hero-line">${num(total, 'hero-amount', 'data-chart-amount')}<span class="hero-delta" data-chart-delta>${deltaHTML(series.pct)}</span><span class="hero-date" data-chart-date></span></div>
       </div>
       ${tfHTML(ui.tf, 'tf')}
       ${chartHTML(series, 'pf')}
@@ -155,7 +177,7 @@ function viewPortfolioOverview() {
   const total = pfValue();
   return `<div class="hero">
       <button class="hero-label" data-a="pfOverview"><span>Portfolio</span><span class="hero-chev flip">${ICON.chevDown}</span></button>
-      <div class="hero-line"><span class="hero-amount">${eur(total)}</span></div>
+      <div class="hero-line">${num(total, 'hero-amount')}</div>
     </div>
     ${pfCardsHTML()}
     <div class="sec"><h2>Rente</h2></div>
@@ -167,8 +189,8 @@ function viewPortfolioOverview() {
     ${PF_ACCOUNTS.map((a) => {
       const v = pfValue(a.id);
       const share = total > 0 ? v / total : 0;
-      return `<button class="row" data-a="pfAcc" data-id="${a.id}">
-        <span class="row-main"><b>${a.name}</b><small>${eur(v)}</small></span>
+      return `<button class="row" data-key="pfa-${a.id}" data-a="pfAcc" data-id="${a.id}">
+        <span class="row-main"><b>${a.name}</b><small>${num(v)}</small></span>
         <span class="row-end split"><b>${pct0(share * 100)}</b>${ringSVG(share, '#ffffff')}</span>
       </button>`;
     }).join('')}`;
@@ -224,7 +246,7 @@ function viewCashOverview() {
        </button>`;
   return `<div class="hero">
       <div class="hero-label"><span>Verfügbar</span></div>
-      <div class="hero-line"><span class="hero-amount">${eur(total)}</span>${subs.length ? `<span class="hero-note">${S.accounts.length} Konten</span>` : ''}</div>
+      <div class="hero-line">${num(total, 'hero-amount')}${subs.length ? `<span class="hero-note">${S.accounts.length} Konten</span>` : ''}</div>
     </div>
     ${cashCardsMain()}
     ${konten}
@@ -236,7 +258,7 @@ function viewCashAccount(a) {
   const label = `<button class="hero-label" data-a="cashAcc" data-id="all"><span>${esc(a.name)}</span><span class="hero-chev">${ICON.chevDown}</span></button>`;
   const empty = !a.main && !txFor(a.id).length;
   return `<div class="hero">${label}
-      <div class="hero-line"><span class="hero-amount">${eur(a.balance)}</span>${a.main ? '<span class="hero-note">Verfügbar</span>' : `<span class="hero-emoji">${a.emoji}</span>`}</div>
+      <div class="hero-line">${num(a.balance, 'hero-amount')}<span class="hero-note">${a.main ? 'Verfügbar' : 'Unterkonto'}</span></div>
       ${goalBar(a)}
     </div>
     ${a.main ? cashCardsMain() : cashCardsSub(a)}
