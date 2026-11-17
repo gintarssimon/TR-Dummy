@@ -38,6 +38,7 @@ function loadState() {
     return;
   }
   S = generate(wanted === null ? randomSeed() : wanted);
+  if (savedDepotRange()) applyDepotRange(savedDepotRange());
   save();
 }
 
@@ -45,6 +46,7 @@ const randomSeed = () => 10000 + Math.floor(Math.random() * 90000);
 
 function reroll(opts) {
   S = generate(randomSeed(), opts);
+  if (savedDepotRange()) applyDepotRange(savedDepotRange());
   save();
 }
 
@@ -103,7 +105,7 @@ function monthStats(mk, view) {
 }
 
 const positionsOf = (pfAcc) => S.positions.filter((p) => INSTR[p.iid].acct === pfAcc);
-const pfValue = (pfAcc) => sum(pfAcc ? positionsOf(pfAcc) : S.positions, (p) => p.value);
+const pfValue = (pfAcc) => round2(sum(pfAcc ? positionsOf(pfAcc) : S.positions, (p) => p.value));
 const position = (iid) => S.positions.find((p) => p.iid === iid);
 const posPerf = (p) => (p.invested > 0 ? (p.value / p.invested - 1) * 100 : 0);
 
@@ -214,4 +216,102 @@ function simulateCardPayment() {
   }
   save();
   return { merchant: m[0], amount, from, rounded, target };
+}
+
+/* ---------- Depotwert-Bereich (verstecktes Demo-Menü) ----------
+ * Legt fest, in welchem Betragsbereich der Wert des Brokerage-Depots liegt. Die Positionen werden passend
+ * neu zusammengestellt (mehr Titel bei größeren Depots), der Sparplan wird mitskaliert.
+ * Die Wahl wird getrennt gespeichert und gilt auch nach „Neue Zufallsdaten“. */
+
+const LS_DEPOT = 'cash-unterkonten-depot';
+const DEPOT_RANGES = [
+  [100, 1000],
+  [1000, 10000],
+  [10000, 50000],
+  [50000, 250000],
+  [250000, 1000000],
+  [1000000, 10000000],
+];
+
+function eurShort(v) {
+  if (v >= 1e6) return nf01.format(v / 1e6).replace(/,0$/, '') + NBSP + 'Mio.' + NBSP + '€';
+  return eur0(v);
+}
+const rangeLabel = (r) => (r.min === r.max ? eurShort(r.min) : eurShort(r.min) + ' – ' + eurShort(r.max));
+
+function savedDepotRange() {
+  try {
+    const r = JSON.parse(localStorage.getItem(LS_DEPOT) || 'null');
+    return r && r.min > 0 && r.max >= r.min ? r : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** Nächster „runder“ Sparplanbetrag passend zur Depotgröße. */
+function planAmountFor(total) {
+  const steps = [25, 50, 75, 100, 150, 200, 250, 300, 500, 750, 1000, 1500, 2000, 2500, 5000];
+  const want = clamp(total * 0.008, 25, 5000);
+  return steps.reduce((best, s) => (Math.abs(s - want) < Math.abs(best - want) ? s : best), steps[0]);
+}
+
+function setPlanAmount(amount) {
+  const plan = S.plans[0];
+  if (!plan) return;
+  plan.amount = amount;
+  S.tx.forEach((t) => {
+    if (t.kind === 'savingsplan' && t.iid === plan.iid) t.amount = -amount;
+  });
+}
+
+/** Stellt das Brokerage-Depot auf einen Wert im Bereich r = { min, max, salt } zusammen; ohne r: Standardwerte des Seeds. */
+function applyDepotRange(r) {
+  const keep = S.positions.filter((p) => INSTR[p.iid].acct !== 'brokerage');
+  S.depotRange = r || null;
+  if (!r) {
+    const fresh = generate(S.seed);
+    S.positions = keep.concat(fresh.positions.filter((p) => INSTR[p.iid].acct === 'brokerage'));
+    setPlanAmount(fresh.plans[0].amount);
+    return;
+  }
+  const R = makeRand(hashStr(S.seed + '|depot|' + r.min + '|' + r.max + '|' + (r.salt || 0)));
+  const lo = Math.max(1, r.min);
+  const hi = Math.max(lo, r.max);
+  const total = round2(Math.exp(Math.log(lo) + R.raw() * (Math.log(hi) - Math.log(lo))));
+  const n = total < 1500 ? R.i(2, 3) : total < 15000 ? R.i(3, 5) : total < 150000 ? R.i(5, 8) : R.i(7, 11);
+
+  const planEtf = S.plans[0] && INSTR[S.plans[0].iid].type === 'etf' ? INSTR[S.plans[0].iid] : null;
+  const etfs = R.shuffle(INSTRUMENTS.filter((i) => i.type === 'etf' && (!planEtf || i.id !== planEtf.id)));
+  const stocks = R.shuffle(INSTRUMENTS.filter((i) => i.type === 'stock'));
+  const picks = [planEtf || etfs.shift()];
+  const extraEtfs = n >= 6 ? R.i(1, 2) : n >= 4 ? R.i(0, 1) : 0;
+  for (let i = 0; i < extraEtfs; i++) picks.push(etfs[i]);
+  while (picks.length < n) picks.push(stocks.shift());
+
+  // Haupt-ETF trägt 35–60 %, der Rest verteilt sich ungleich auf die übrigen Titel
+  const mainShare = n === 1 ? 1 : R.f(0.35, 0.6);
+  const rest = picks.slice(1).map((ins) => (ins.type === 'etf' ? R.f(0.7, 1.4) : Math.pow(R.f(0.15, 1), 1.5)));
+  const restSum = sum(rest) || 1;
+  const shares = [mainShare].concat(rest.map((w) => ((1 - mainShare) * w) / restSum));
+
+  let used = 0;
+  const positions = picks.map((ins, i) => {
+    const value = i === picks.length - 1 ? round2(total - used) : round2(total * shares[i]);
+    used = round2(used + value);
+    const perf = ins.type === 'etf' ? R.f(-2, 28) : R.f(-25, 60);
+    return { iid: ins.id, value, invested: round2(value / (1 + perf / 100)) };
+  });
+  S.positions = keep.concat(positions);
+  setPlanAmount(planAmountFor(total));
+}
+
+function setDepotRange(r) {
+  try {
+    if (r) localStorage.setItem(LS_DEPOT, JSON.stringify(r));
+    else localStorage.removeItem(LS_DEPOT);
+  } catch (e) {
+    /* ignore */
+  }
+  applyDepotRange(r);
+  save();
 }

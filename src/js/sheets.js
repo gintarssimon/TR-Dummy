@@ -842,3 +842,49 @@ SHEETS.konto = {
       ${navRow('g_doc', 'Depotauszug', 'Quartalsweise', 'toast', 'data-msg="Dokumente: in der Demo nicht verfügbar"')}`;
   },
 };
+
+/* ---------- Verstecktes Demo-Menü (langes Drücken bzw. 5× Tippen auf den Namen im Profil) ---------- */
+
+SHEETS.demo = {
+  html() {
+    const cur = S.depotRange;
+    const isCur = (r) => !!cur && cur.min === r[0] && cur.max === r[1];
+    const radio = (on) => `<span class="row-end"><i class="radio ${on ? 'on' : ''}">${on ? ICON.check : ''}</i></span>`;
+    const custom = cur && !DEPOT_RANGES.some(isCur);
+    return `${shTitle('Demo-Einstellungen', 'Nur für die Präsentation – nicht Teil des Konzepts.')}
+      <div class="sec"><h2>Depotwert</h2><span class="sec-btn">${num(pfValue('brokerage'))}</span></div>
+      <button class="row slim" data-key="dr-std" data-a="depotRange" data-i="-1"><span class="row-main"><b>Zufällig</b><small>Standardwerte der Zufallsdaten</small></span>${radio(!cur)}</button>
+      ${DEPOT_RANGES.map((r, i) => `<button class="row slim" data-key="dr-${i}" data-a="depotRange" data-i="${i}"><span class="row-main"><b>${rangeLabel({ min: r[0], max: r[1] })}</b></span>${radio(isCur(r))}</button>`).join('')}
+      <button class="row slim" data-key="dr-custom" data-a="sheet" data-sheet="depotCustom"><span class="row-main"><b>Eigener Bereich</b><small>${custom ? rangeLabel(cur) : 'Von – bis frei festlegen'}</small></span>${radio(custom)}</button>
+      ${cur ? `<div class="btn-line"><button class="chip" data-a="depotReroll">${ICON.g_dice} Neuer Wert im Bereich</button></div>` : ''}
+      <div class="sec"><h2>Daten</h2><span class="sec-btn">Seed ${S.seed}</span></div>
+      ${navRow('g_dice', 'Neue Zufallsdaten', 'Namen, Beträge und Umsätze neu würfeln', 'reroll')}
+      ${navRow('g_reset', 'Ohne Unterkonten starten', 'Zeigt den Einstieg ins neue Feature', 'rerollEmpty')}
+      ${navRow('g_card', 'Kartenzahlung simulieren', 'Bucht vom verknüpften Konto ab', 'simulatePay')}
+      <p class="legal">Der Depotwert-Bereich bleibt gespeichert und gilt auch für neue Zufallsdaten.</p>`;
+  },
+};
+
+SHEETS.depotCustom = {
+  html(p) {
+    return `${shTitle('Eigener Bereich', 'Der Depotwert wird zufällig in diesem Bereich gewählt. Gleiche Werte ergeben einen festen Betrag.')}
+      <div class="gap"></div>
+      <label class="field"><span>Von (€)</span><input data-f="min" inputmode="decimal" placeholder="z. B. 20000" autocomplete="off" enterkeyhint="next"></label>
+      <div class="gap small"></div>
+      <label class="field"><span>Bis (€)</span><input data-f="max" inputmode="decimal" placeholder="z. B. 80000" autocomplete="off" enterkeyhint="done"></label>`;
+  },
+  bottom(p) {
+    const r = customRange(p);
+    return `${r.error ? `<p class="amt-hint bad">${r.error}</p>` : ''}<button class="cta" data-a="depotCustomSave" ${r.ok ? '' : 'disabled'}>Übernehmen</button>`;
+  },
+};
+
+function customRange(p) {
+  const parse = (v) => (v ? parseFloat(String(v).replace(/\./g, '').replace(',', '.')) : NaN);
+  const min = parse(p.min);
+  const max = p.max ? parse(p.max) : min;
+  if (!(min > 0)) return { ok: false, error: p.min ? 'Bitte einen Betrag größer 0 eingeben.' : '' };
+  if (!(max >= min)) return { ok: false, error: '„Bis“ muss mindestens so groß sein wie „Von“.' };
+  if (max > 1e8) return { ok: false, error: 'Höchstens 100 Mio. €.' };
+  return { ok: true, min: round2(min), max: round2(max) };
+}

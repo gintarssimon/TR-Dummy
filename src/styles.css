@@ -55,12 +55,10 @@ i, em { font-style: normal; }
 
 #splash { position: absolute; inset: 0; z-index: 80; display: grid; place-items: center; background: #000; transition: opacity .55s ease, visibility 0s linear .55s; }
 #splash.out { opacity: 0; visibility: hidden; }
-#splash .tr-logo { animation: splashIn .7s cubic-bezier(.2, .8, .2, 1) both; transition: transform .6s cubic-bezier(.32, .72, 0, 1); }
-#splash.out .tr-logo { transform: scale(1.06); }
+#splash .tr-wordmark { animation: splashIn .7s cubic-bezier(.2, .8, .2, 1) both; transition: transform .6s cubic-bezier(.32, .72, 0, 1); }
+#splash.out .tr-wordmark { transform: scale(1.06); }
 @keyframes splashIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
-.tr-logo { display: inline-flex; align-items: center; gap: 6px; color: #fff; font-size: 16px; line-height: 1; white-space: nowrap; }
-.tr-logo b { font-weight: 850; letter-spacing: .012em; }
-.tr-mark { width: 19px; height: 15px; }
+.tr-wordmark { display: block; width: 41%; max-width: 230px; height: auto; aspect-ratio: 211 / 19; color: #fff; }
 #main, #sheets { opacity: 0; }
 #app.ready #main, #app.ready #sheets { opacity: 1; }
 #app.ready #main { animation: appIn .7s cubic-bezier(.32, .72, 0, 1); }
@@ -284,6 +282,8 @@ button.row:active, .picker:active, .sec-btn:active, button.sec-link:active, butt
 .sh-title { padding: 0 var(--pad); font-size: 22.500px; line-height: 28px; letter-spacing: -.02em; }
 .sh-sub { padding: 0 var(--pad); margin-top: 5px; color: var(--muted); font-size: 16px; font-weight: 600; line-height: 1.5; }
 .gap { height: 26px; }
+.gap.small { height: 16px; }
+[data-secret] { -webkit-touch-callout: none; cursor: default; }
 .para { padding: 18px var(--pad) 0; color: #b4b4ba; font-size: 16px; font-weight: 500; line-height: 1.55; }
 .para b { color: #fff; }
 .kv { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 42px; padding: 0 var(--pad); }
@@ -371,7 +371,7 @@ button.row:active, .picker:active, .sec-btn:active, button.sec-link:active, butt
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28), inset 0 -2px 3px rgba(0, 0, 0, .12); transition: filter .45s ease, opacity .45s ease, transform .45s cubic-bezier(.2, .8, .2, 1); }
 .plastic:active { transform: scale(.985); }
 .plastic.locked { filter: grayscale(1) brightness(.5); }
-.plastic .tr-logo.on-card { position: absolute; left: 9.400%; top: 12.500%; font-size: 15.500px; }
+.plastic .tr-wordmark.on-card { position: absolute; left: 9.400%; top: 14.500%; width: 46.500%; max-width: none; }
 .plastic .pl-chip { position: absolute; left: 9.600%; top: 33.500%; width: 12.400%; aspect-ratio: 1.400; border-radius: 5px; background: linear-gradient(90deg, transparent 31%, rgba(90, 90, 90, .55) 31% 33.500%, transparent 33.500% 66%, rgba(90, 90, 90, .55) 66% 68.500%, transparent 68.500%), linear-gradient(0deg, transparent 31%, rgba(90, 90, 90, .45) 31% 34%, transparent 34% 66%, rgba(90, 90, 90, .45) 66% 69%, transparent 69%), linear-gradient(135deg, #f1f1f1, #c9c9c9); box-shadow: inset 0 0 0 1px rgba(110, 110, 110, .55); }
 .plastic .pl-link { position: absolute; left: 9.200%; bottom: 12%; display: flex; align-items: center; gap: 9px; font-size: 16.500px; font-weight: 700; }
 .plastic .pl-link svg { width: 10px; height: 10px; stroke-width: 3.600; }

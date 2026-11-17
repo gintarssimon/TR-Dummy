@@ -282,7 +282,7 @@ function serviceRow(icon, title, sub, action, extra, cls) {
 
 function viewProfile() {
   const na = 'data-msg="In der Demo nicht verfügbar"';
-  return `<div class="hero">
+  return `<div class="hero" data-secret data-a="secretTap">
       <div class="hero-label"><span>Persönlich</span></div>
       <div class="hero-line"><span class="hero-amount">${esc(userName())}</span></div>
     </div>
@@ -296,10 +296,6 @@ function viewProfile() {
     ${serviceRow('g_doc', 'Steuern', 'Steuer ID, Freistellungsauftrag, Verrechnung', 'toast', na)}
     ${serviceRow('g_doc', 'Kontoauszüge', 'Cash, Portfolio, Steuern und mehr', 'sheet', 'data-sheet="konto"')}
     ${serviceRow('g_gear', 'Einstellungen', 'Konto, Sicherheit und mehr', 'toast', na)}
-    <div class="sec"><h2>Demo</h2><span class="sec-btn">Seed ${S.seed}</span></div>
-    ${serviceRow('g_dice', 'Neue Zufallsdaten', 'Namen, Beträge und Depot neu würfeln', 'reroll')}
-    ${serviceRow('g_reset', 'Ohne Unterkonten starten', 'Zeigt den Einstieg ins neue Feature', 'rerollEmpty')}
-    ${serviceRow('g_card', 'Kartenzahlung simulieren', 'Bucht vom verknüpften Konto ab', 'simulatePay')}
     <p class="legal">Prototyp zur Präsentation des Konzepts „Unterkonten“. Alle Namen, Beträge und Kurse sind zufällig erzeugt – kein echtes Konto, keine echten Daten.</p>`;
 }
 

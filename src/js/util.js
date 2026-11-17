@@ -253,8 +253,7 @@ Object.assign(ICON, {
 
 /* ---------- Wortmarke ---------- */
 
-const TR_MARK = '<svg class="tr-mark" viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="5.400" stroke-linecap="butt" aria-hidden="true"><path d="M1 5.800C6 2.600 10 2.600 15 4.900s9 2.500 14-.700"/><path d="M1 13C6 9.800 10 9.800 15 12.100s9 2.500 14-.700"/><path d="M1 20.200C6 17 10 17 15 19.300s9 2.500 14-.700"/></svg>';
-const trLogoHTML = (cls) => `<span class="tr-logo ${cls || ''}"><b>TRADE REPUBLIC</b>${TR_MARK}</span>`;
+const trLogoHTML = (cls) => `<svg class="tr-wordmark ${cls || ''}" viewBox="0 0 211 19" role="img" aria-label="Trade Republic"><use href="#tr-logo"/></svg>`;
 
 /* ---------- Akzentfarbe je Wertpapier (aus der Markenfarbe) ---------- */
 

@@ -345,7 +345,48 @@ function pulse(sheet, sel) {
 
 const LS_ABS = 'cash-unterkonten-abs';
 
+let secretTaps = [];
+function openDemoMenu() {
+  if (ui.sheets.some((s) => s.type === 'demo')) return;
+  try {
+    if (navigator.vibrate) navigator.vibrate(12);
+  } catch (e) {
+    /* ignore */
+  }
+  openSheet('demo');
+}
+
 const ACTIONS = {
+  /** Verstecktes Demo-Menü: 5× schnell auf den Namen im Profil tippen (oder lange drücken). */
+  secretTap() {
+    const now = Date.now();
+    secretTaps = secretTaps.filter((t) => now - t < 2500).concat(now);
+    if (secretTaps.length >= 5) {
+      secretTaps = [];
+      openDemoMenu();
+    }
+  },
+  depotRange(d) {
+    const i = +d.i;
+    const r = i < 0 ? null : { min: DEPOT_RANGES[i][0], max: DEPOT_RANGES[i][1], salt: 0 };
+    setDepotRange(r);
+    render();
+    toast('Depotwert: ' + eur(pfValue('brokerage')));
+  },
+  depotReroll() {
+    const cur = S.depotRange;
+    if (!cur) return;
+    setDepotRange({ min: cur.min, max: cur.max, salt: (cur.salt || 0) + 1 });
+    render();
+    toast('Depotwert: ' + eur(pfValue('brokerage')));
+  },
+  depotCustomSave(d, sheet) {
+    const r = customRange(sheet.p);
+    if (!r.ok) return;
+    setDepotRange({ min: r.min, max: r.max, salt: 0 });
+    closeSheet(sheet);
+    toast('Depotwert: ' + eur(pfValue('brokerage')));
+  },
   /** Tippen auf eine Veränderung schaltet überall zwischen Prozent und absoluten €-Werten um. */
   toggleAbs() {
     ui.abs = !ui.abs;
@@ -757,6 +798,35 @@ function bindEvents() {
   });
   app.addEventListener('animationend', (e) => {
     if (e.animationName === 'mIn') e.target.classList.remove('m-in');
+  });
+
+  /* Verstecktes Demo-Menü: langes Drücken auf den Namen im Profil */
+  let press = null;
+  const cancelPress = () => {
+    if (press) clearTimeout(press.timer);
+    press = null;
+  };
+  app.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest('[data-secret]');
+    if (!el) return;
+    cancelPress();
+    press = {
+      x: e.clientX,
+      y: e.clientY,
+      timer: setTimeout(() => {
+        press = null;
+        secretTaps = [];
+        suppressClickUntil = Date.now() + 450;
+        openDemoMenu();
+      }, 650),
+    };
+  });
+  app.addEventListener('pointermove', (e) => {
+    if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) cancelPress();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => app.addEventListener(t, cancelPress));
+  app.addEventListener('contextmenu', (e) => {
+    if (e.target.closest('[data-secret]')) e.preventDefault();
   });
 
   /* Sheet nach unten wegziehen */

@@ -70,12 +70,10 @@ i, em { font-style: normal; }
 
 #splash { position: absolute; inset: 0; z-index: 80; display: grid; place-items: center; background: #000; transition: opacity .55s ease, visibility 0s linear .55s; }
 #splash.out { opacity: 0; visibility: hidden; }
-#splash .tr-logo { animation: splashIn .7s cubic-bezier(.2, .8, .2, 1) both; transition: transform .6s cubic-bezier(.32, .72, 0, 1); }
-#splash.out .tr-logo { transform: scale(1.06); }
+#splash .tr-wordmark { animation: splashIn .7s cubic-bezier(.2, .8, .2, 1) both; transition: transform .6s cubic-bezier(.32, .72, 0, 1); }
+#splash.out .tr-wordmark { transform: scale(1.06); }
 @keyframes splashIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
-.tr-logo { display: inline-flex; align-items: center; gap: 6px; color: #fff; font-size: 16px; line-height: 1; white-space: nowrap; }
-.tr-logo b { font-weight: 850; letter-spacing: .012em; }
-.tr-mark { width: 19px; height: 15px; }
+.tr-wordmark { display: block; width: 41%; max-width: 230px; height: auto; aspect-ratio: 211 / 19; color: #fff; }
 #main, #sheets { opacity: 0; }
 #app.ready #main, #app.ready #sheets { opacity: 1; }
 #app.ready #main { animation: appIn .7s cubic-bezier(.32, .72, 0, 1); }
@@ -299,6 +297,8 @@ button.row:active, .picker:active, .sec-btn:active, button.sec-link:active, butt
 .sh-title { padding: 0 var(--pad); font-size: 22.500px; line-height: 28px; letter-spacing: -.02em; }
 .sh-sub { padding: 0 var(--pad); margin-top: 5px; color: var(--muted); font-size: 16px; font-weight: 600; line-height: 1.5; }
 .gap { height: 26px; }
+.gap.small { height: 16px; }
+[data-secret] { -webkit-touch-callout: none; cursor: default; }
 .para { padding: 18px var(--pad) 0; color: #b4b4ba; font-size: 16px; font-weight: 500; line-height: 1.55; }
 .para b { color: #fff; }
 .kv { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 42px; padding: 0 var(--pad); }
@@ -386,7 +386,7 @@ button.row:active, .picker:active, .sec-btn:active, button.sec-link:active, butt
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28), inset 0 -2px 3px rgba(0, 0, 0, .12); transition: filter .45s ease, opacity .45s ease, transform .45s cubic-bezier(.2, .8, .2, 1); }
 .plastic:active { transform: scale(.985); }
 .plastic.locked { filter: grayscale(1) brightness(.5); }
-.plastic .tr-logo.on-card { position: absolute; left: 9.400%; top: 12.500%; font-size: 15.500px; }
+.plastic .tr-wordmark.on-card { position: absolute; left: 9.400%; top: 14.500%; width: 46.500%; max-width: none; }
 .plastic .pl-chip { position: absolute; left: 9.600%; top: 33.500%; width: 12.400%; aspect-ratio: 1.400; border-radius: 5px; background: linear-gradient(90deg, transparent 31%, rgba(90, 90, 90, .55) 31% 33.500%, transparent 33.500% 66%, rgba(90, 90, 90, .55) 66% 68.500%, transparent 68.500%), linear-gradient(0deg, transparent 31%, rgba(90, 90, 90, .45) 31% 34%, transparent 34% 66%, rgba(90, 90, 90, .45) 66% 69%, transparent 69%), linear-gradient(135deg, #f1f1f1, #c9c9c9); box-shadow: inset 0 0 0 1px rgba(110, 110, 110, .55); }
 .plastic .pl-link { position: absolute; left: 9.200%; bottom: 12%; display: flex; align-items: center; gap: 9px; font-size: 16.500px; font-weight: 700; }
 .plastic .pl-link svg { width: 10px; height: 10px; stroke-width: 3.600; }
@@ -508,6 +508,8 @@ button.row:active, .picker:active, .sec-btn:active, button.sec-link:active, butt
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body>
+<!-- Wortmarke von Trade Republic (Marke der Trade Republic Bank GmbH), nur für den privaten Konzept-Prototyp -->
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><symbol id="tr-logo" viewBox="0 0 211 19"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M210.521 9.082v5.707h-.002l-.006.01a.562.562 0 0 1-.412.552l-7.823 2.01a1.179 1.179 0 0 1-.706-.03l-3.412-1.21a1.18 1.18 0 0 0-.706-.03l-7.515 1.944c-.283.072-.569-.117-.639-.421a.713.713 0 0 1-.014-.132v-5.707c0-.265.171-.493.412-.553l7.764-2.01c.232-.06.476-.052.706.03l3.418 1.204c.23.079.474.09.706.03l7.577-1.947c.283-.072.571.114.638.42a.638.638 0 0 1 .014.133Zm-.005-8.514v5.717a.562.562 0 0 1-.412.552l-7.817 2.008a1.179 1.179 0 0 1-.706-.03l-3.419-1.202a1.18 1.18 0 0 0-.706-.03l-7.514 1.944c-.283.072-.569-.117-.639-.42a.714.714 0 0 1-.014-.133V3.258c0-.264.171-.493.412-.55l7.764-2.01c.232-.06.476-.051.706.03l3.418 1.205c.23.078.474.09.706.03l7.568-1.948c.283-.072.572.115.639.421a.714.714 0 0 1 .014.132ZM170.004 16.64c1.195.705 2.589 1.057 4.181 1.057 1.357 0 2.56-.264 3.608-.793 1.049-.528 1.886-1.261 2.509-2.2.624-.946.99-2.028 1.1-3.246h-3.895a3.645 3.645 0 0 1-.583 1.54c-.3.433-.689.767-1.166 1.002-.469.234-1.001.352-1.595.352-.807 0-1.504-.198-2.091-.594-.579-.404-1.023-.968-1.331-1.695-.308-.733-.462-1.588-.462-2.563 0-.895.154-1.713.462-2.454.315-.74.763-1.328 1.342-1.76.587-.433 1.276-.65 2.069-.65.594 0 1.118.114 1.573.341.462.228.836.55 1.122.969.294.418.503.917.627 1.496h3.884c-.176-1.232-.586-2.31-1.232-3.235a6.5 6.5 0 0 0-2.52-2.145c-1.026-.514-2.196-.77-3.509-.77-1.578 0-2.957.352-4.137 1.056a7.1 7.1 0 0 0-2.729 2.927c-.638 1.24-.957 2.648-.957 4.225 0 1.57.322 2.978.968 4.225a7.142 7.142 0 0 0 2.762 2.915ZM13.782 1.56v15.867H17.7v-5.953h1.232l3.191 5.953h4.357l-3.564-6.349a4.37 4.37 0 0 0 1.639-.99 4.328 4.328 0 0 0 1.023-1.573 5.491 5.491 0 0 0 .352-1.992c0-1.005-.212-1.878-.638-2.619-.425-.748-1.045-1.324-1.86-1.727-.806-.41-1.767-.616-2.882-.616h-6.767Zm7.614 6.537c-.418.322-.931.484-1.54.484h-2.157V4.608h2.102c.403 0 .77.066 1.1.198.33.124.598.333.803.627.213.293.32.682.32 1.166 0 .668-.21 1.166-.628 1.497ZM59.55 1.56v15.866h10.585V14.18h-6.712v-3.367h5.766V7.942h-5.766V4.806h6.712V1.56H59.55ZM27.022 17.426l5.48-15.866h4.83l5.48 15.866h-4.193l-.935-3.092H32.15l-.936 3.092h-4.192Zm5.975-5.997h3.85l-1.254-4.07a69.17 69.17 0 0 1-.627-2.256h-.088c-.22.814-.433 1.566-.638 2.255l-1.243 4.071Zm10.956-9.87v15.867h5.59c1.715 0 3.182-.334 4.4-1.001 1.218-.668 2.138-1.596 2.762-2.784.623-1.188.935-2.564.935-4.126 0-1.562-.312-2.941-.935-4.137-.624-1.203-1.544-2.138-2.762-2.806-1.218-.675-2.684-1.012-4.4-1.012h-5.59Zm7.8 12.148c-.63.389-1.378.583-2.244.583h-1.738V4.696h1.727c.866 0 1.614.201 2.245.605.638.396 1.126.957 1.463 1.683.345.726.517 1.57.517 2.53 0 .955-.169 1.794-.506 2.52a3.832 3.832 0 0 1-1.463 1.673Zm26.328 3.725V1.566h6.766c1.115 0 2.076.205 2.883.616.814.403 1.434.98 1.86 1.727.425.741.638 1.614.638 2.619 0 .719-.118 1.383-.352 1.991a4.328 4.328 0 0 1-1.024 1.574c-.454.44-1 .77-1.64.99l3.566 6.349H86.42l-3.191-5.953h-1.232v5.953H78.08Zm6.073-8.846c.609 0 1.122-.162 1.54-.485.419-.33.628-.829.628-1.496 0-.484-.107-.873-.32-1.166a1.69 1.69 0 0 0-.803-.627 2.938 2.938 0 0 0-1.1-.199h-2.101v3.972h2.156Zm8.152-7.02v15.866h10.585v-3.246h-6.712v-3.367h5.766V7.947h-5.766V4.812h6.712V1.566H92.306Zm12.228 15.866V1.566h6.481c1.232 0 2.281.209 3.147.627.873.41 1.533.997 1.98 1.76.455.756.682 1.65.682 2.685 0 1.027-.227 1.925-.682 2.696-.447.77-1.107 1.368-1.98 1.793-.873.418-1.922.627-3.147.627h-2.597v5.678h-3.884Zm6.118-8.692c.484 0 .898-.077 1.243-.232a1.82 1.82 0 0 0 .814-.704c.198-.315.297-.704.297-1.166 0-.47-.095-.855-.286-1.155a1.634 1.634 0 0 0-.814-.671c-.352-.147-.77-.22-1.254-.22h-2.234V8.74h2.234Zm10.679 8.197c.982.498 2.189.748 3.619.748 1.438 0 2.645-.25 3.62-.748.976-.5 1.706-1.207 2.19-2.124.491-.917.737-2.002.737-3.257v-9.99h-3.917v9.737c0 1.05-.216 1.83-.649 2.344-.433.506-1.093.759-1.981.759-.902 0-1.569-.253-2.002-.76-.433-.513-.649-1.294-.649-2.343V1.566h-3.917v9.99c0 1.247.246 2.333.737 3.257.491.917 1.229 1.625 2.212 2.124Zm12.629.49V1.56h7.195c.932 0 1.743.18 2.432.54.697.351 1.229.835 1.595 1.452a3.88 3.88 0 0 1 .562 2.057c0 .499-.085.961-.253 1.387a3.388 3.388 0 0 1-.727 1.11 3.541 3.541 0 0 1-1.1.76v.022a4.081 4.081 0 0 1 1.529.88c.426.382.749.833.969 1.354.22.513.33 1.074.33 1.683 0 .866-.198 1.65-.594 2.355a4.29 4.29 0 0 1-1.673 1.661c-.726.403-1.577.605-2.552.605h-7.713Zm6.436-2.95c.433 0 .811-.077 1.134-.23.33-.155.583-.382.759-.683.183-.308.275-.678.275-1.111 0-.41-.092-.76-.275-1.045a1.652 1.652 0 0 0-.759-.65c-.323-.154-.701-.23-1.134-.23h-2.563v3.95h2.563Zm-.341-6.502c.404 0 .752-.07 1.045-.21.294-.139.518-.34.672-.604.161-.265.242-.584.242-.958s-.085-.69-.253-.946a1.433 1.433 0 0 0-.694-.583 2.44 2.44 0 0 0-1.012-.198h-2.222v3.499h2.222Zm8.594-6.41v15.867h10.123v-3.29h-6.206V1.566h-3.917Zm11.832 15.878V1.577h3.917v15.866h-3.917ZM4.302 17.426V4.828H0V1.56h12.488v3.268H8.186v12.598H4.302Z"/></symbol></svg>
 <div id="stage">
   <div id="phone">
     <div id="statusbar" aria-hidden="true">
@@ -522,7 +524,7 @@ button.row:active, .picker:active, .sec-btn:active, button.sec-link:active, butt
       <div id="main"></div>
       <div id="sheets"></div>
       <div id="toast" role="status" aria-live="polite"></div>
-      <div id="splash" aria-hidden="true"><span class="tr-logo"><b>TRADE REPUBLIC</b><svg class="tr-mark" viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="5.400" stroke-linecap="butt"><path d="M1 5.800C6 2.600 10 2.600 15 4.900s9 2.500 14-.700"/><path d="M1 13C6 9.800 10 9.800 15 12.100s9 2.500 14-.700"/><path d="M1 20.200C6 17 10 17 15 19.300s9 2.500 14-.700"/></svg></span></div>
+      <div id="splash" aria-hidden="true"><svg class="tr-wordmark" viewBox="0 0 211 19" role="img" aria-label="Trade Republic"><use href="#tr-logo"/></svg></div>
     </div>
     <div id="homebar" aria-hidden="true"></div>
   </div>
@@ -785,8 +787,7 @@ Object.assign(ICON, {
 
 /* ---------- Wortmarke ---------- */
 
-const TR_MARK = '<svg class="tr-mark" viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="5.400" stroke-linecap="butt" aria-hidden="true"><path d="M1 5.800C6 2.600 10 2.600 15 4.900s9 2.500 14-.700"/><path d="M1 13C6 9.800 10 9.800 15 12.100s9 2.500 14-.700"/><path d="M1 20.200C6 17 10 17 15 19.300s9 2.500 14-.700"/></svg>';
-const trLogoHTML = (cls) => `<span class="tr-logo ${cls || ''}"><b>TRADE REPUBLIC</b>${TR_MARK}</span>`;
+const trLogoHTML = (cls) => `<svg class="tr-wordmark ${cls || ''}" viewBox="0 0 211 19" role="img" aria-label="Trade Republic"><use href="#tr-logo"/></svg>`;
 
 /* ---------- Akzentfarbe je Wertpapier (aus der Markenfarbe) ---------- */
 
@@ -1376,6 +1377,7 @@ function loadState() {
     return;
   }
   S = generate(wanted === null ? randomSeed() : wanted);
+  if (savedDepotRange()) applyDepotRange(savedDepotRange());
   save();
 }
 
@@ -1383,6 +1385,7 @@ const randomSeed = () => 10000 + Math.floor(Math.random() * 90000);
 
 function reroll(opts) {
   S = generate(randomSeed(), opts);
+  if (savedDepotRange()) applyDepotRange(savedDepotRange());
   save();
 }
 
@@ -1441,7 +1444,7 @@ function monthStats(mk, view) {
 }
 
 const positionsOf = (pfAcc) => S.positions.filter((p) => INSTR[p.iid].acct === pfAcc);
-const pfValue = (pfAcc) => sum(pfAcc ? positionsOf(pfAcc) : S.positions, (p) => p.value);
+const pfValue = (pfAcc) => round2(sum(pfAcc ? positionsOf(pfAcc) : S.positions, (p) => p.value));
 const position = (iid) => S.positions.find((p) => p.iid === iid);
 const posPerf = (p) => (p.invested > 0 ? (p.value / p.invested - 1) * 100 : 0);
 
@@ -1552,6 +1555,104 @@ function simulateCardPayment() {
   }
   save();
   return { merchant: m[0], amount, from, rounded, target };
+}
+
+/* ---------- Depotwert-Bereich (verstecktes Demo-Menü) ----------
+ * Legt fest, in welchem Betragsbereich der Wert des Brokerage-Depots liegt. Die Positionen werden passend
+ * neu zusammengestellt (mehr Titel bei größeren Depots), der Sparplan wird mitskaliert.
+ * Die Wahl wird getrennt gespeichert und gilt auch nach „Neue Zufallsdaten“. */
+
+const LS_DEPOT = 'cash-unterkonten-depot';
+const DEPOT_RANGES = [
+  [100, 1000],
+  [1000, 10000],
+  [10000, 50000],
+  [50000, 250000],
+  [250000, 1000000],
+  [1000000, 10000000],
+];
+
+function eurShort(v) {
+  if (v >= 1e6) return nf01.format(v / 1e6).replace(/,0$/, '') + NBSP + 'Mio.' + NBSP + '€';
+  return eur0(v);
+}
+const rangeLabel = (r) => (r.min === r.max ? eurShort(r.min) : eurShort(r.min) + ' – ' + eurShort(r.max));
+
+function savedDepotRange() {
+  try {
+    const r = JSON.parse(localStorage.getItem(LS_DEPOT) || 'null');
+    return r && r.min > 0 && r.max >= r.min ? r : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** Nächster „runder“ Sparplanbetrag passend zur Depotgröße. */
+function planAmountFor(total) {
+  const steps = [25, 50, 75, 100, 150, 200, 250, 300, 500, 750, 1000, 1500, 2000, 2500, 5000];
+  const want = clamp(total * 0.008, 25, 5000);
+  return steps.reduce((best, s) => (Math.abs(s - want) < Math.abs(best - want) ? s : best), steps[0]);
+}
+
+function setPlanAmount(amount) {
+  const plan = S.plans[0];
+  if (!plan) return;
+  plan.amount = amount;
+  S.tx.forEach((t) => {
+    if (t.kind === 'savingsplan' && t.iid === plan.iid) t.amount = -amount;
+  });
+}
+
+/** Stellt das Brokerage-Depot auf einen Wert im Bereich r = { min, max, salt } zusammen; ohne r: Standardwerte des Seeds. */
+function applyDepotRange(r) {
+  const keep = S.positions.filter((p) => INSTR[p.iid].acct !== 'brokerage');
+  S.depotRange = r || null;
+  if (!r) {
+    const fresh = generate(S.seed);
+    S.positions = keep.concat(fresh.positions.filter((p) => INSTR[p.iid].acct === 'brokerage'));
+    setPlanAmount(fresh.plans[0].amount);
+    return;
+  }
+  const R = makeRand(hashStr(S.seed + '|depot|' + r.min + '|' + r.max + '|' + (r.salt || 0)));
+  const lo = Math.max(1, r.min);
+  const hi = Math.max(lo, r.max);
+  const total = round2(Math.exp(Math.log(lo) + R.raw() * (Math.log(hi) - Math.log(lo))));
+  const n = total < 1500 ? R.i(2, 3) : total < 15000 ? R.i(3, 5) : total < 150000 ? R.i(5, 8) : R.i(7, 11);
+
+  const planEtf = S.plans[0] && INSTR[S.plans[0].iid].type === 'etf' ? INSTR[S.plans[0].iid] : null;
+  const etfs = R.shuffle(INSTRUMENTS.filter((i) => i.type === 'etf' && (!planEtf || i.id !== planEtf.id)));
+  const stocks = R.shuffle(INSTRUMENTS.filter((i) => i.type === 'stock'));
+  const picks = [planEtf || etfs.shift()];
+  const extraEtfs = n >= 6 ? R.i(1, 2) : n >= 4 ? R.i(0, 1) : 0;
+  for (let i = 0; i < extraEtfs; i++) picks.push(etfs[i]);
+  while (picks.length < n) picks.push(stocks.shift());
+
+  // Haupt-ETF trägt 35–60 %, der Rest verteilt sich ungleich auf die übrigen Titel
+  const mainShare = n === 1 ? 1 : R.f(0.35, 0.6);
+  const rest = picks.slice(1).map((ins) => (ins.type === 'etf' ? R.f(0.7, 1.4) : Math.pow(R.f(0.15, 1), 1.5)));
+  const restSum = sum(rest) || 1;
+  const shares = [mainShare].concat(rest.map((w) => ((1 - mainShare) * w) / restSum));
+
+  let used = 0;
+  const positions = picks.map((ins, i) => {
+    const value = i === picks.length - 1 ? round2(total - used) : round2(total * shares[i]);
+    used = round2(used + value);
+    const perf = ins.type === 'etf' ? R.f(-2, 28) : R.f(-25, 60);
+    return { iid: ins.id, value, invested: round2(value / (1 + perf / 100)) };
+  });
+  S.positions = keep.concat(positions);
+  setPlanAmount(planAmountFor(total));
+}
+
+function setDepotRange(r) {
+  try {
+    if (r) localStorage.setItem(LS_DEPOT, JSON.stringify(r));
+    else localStorage.removeItem(LS_DEPOT);
+  } catch (e) {
+    /* ignore */
+  }
+  applyDepotRange(r);
+  save();
 }
 
 
@@ -2074,7 +2175,7 @@ function serviceRow(icon, title, sub, action, extra, cls) {
 
 function viewProfile() {
   const na = 'data-msg="In der Demo nicht verfügbar"';
-  return `<div class="hero">
+  return `<div class="hero" data-secret data-a="secretTap">
       <div class="hero-label"><span>Persönlich</span></div>
       <div class="hero-line"><span class="hero-amount">${esc(userName())}</span></div>
     </div>
@@ -2088,10 +2189,6 @@ function viewProfile() {
     ${serviceRow('g_doc', 'Steuern', 'Steuer ID, Freistellungsauftrag, Verrechnung', 'toast', na)}
     ${serviceRow('g_doc', 'Kontoauszüge', 'Cash, Portfolio, Steuern und mehr', 'sheet', 'data-sheet="konto"')}
     ${serviceRow('g_gear', 'Einstellungen', 'Konto, Sicherheit und mehr', 'toast', na)}
-    <div class="sec"><h2>Demo</h2><span class="sec-btn">Seed ${S.seed}</span></div>
-    ${serviceRow('g_dice', 'Neue Zufallsdaten', 'Namen, Beträge und Depot neu würfeln', 'reroll')}
-    ${serviceRow('g_reset', 'Ohne Unterkonten starten', 'Zeigt den Einstieg ins neue Feature', 'rerollEmpty')}
-    ${serviceRow('g_card', 'Kartenzahlung simulieren', 'Bucht vom verknüpften Konto ab', 'simulatePay')}
     <p class="legal">Prototyp zur Präsentation des Konzepts „Unterkonten“. Alle Namen, Beträge und Kurse sind zufällig erzeugt – kein echtes Konto, keine echten Daten.</p>`;
 }
 
@@ -2945,6 +3042,52 @@ SHEETS.konto = {
   },
 };
 
+/* ---------- Verstecktes Demo-Menü (langes Drücken bzw. 5× Tippen auf den Namen im Profil) ---------- */
+
+SHEETS.demo = {
+  html() {
+    const cur = S.depotRange;
+    const isCur = (r) => !!cur && cur.min === r[0] && cur.max === r[1];
+    const radio = (on) => `<span class="row-end"><i class="radio ${on ? 'on' : ''}">${on ? ICON.check : ''}</i></span>`;
+    const custom = cur && !DEPOT_RANGES.some(isCur);
+    return `${shTitle('Demo-Einstellungen', 'Nur für die Präsentation – nicht Teil des Konzepts.')}
+      <div class="sec"><h2>Depotwert</h2><span class="sec-btn">${num(pfValue('brokerage'))}</span></div>
+      <button class="row slim" data-key="dr-std" data-a="depotRange" data-i="-1"><span class="row-main"><b>Zufällig</b><small>Standardwerte der Zufallsdaten</small></span>${radio(!cur)}</button>
+      ${DEPOT_RANGES.map((r, i) => `<button class="row slim" data-key="dr-${i}" data-a="depotRange" data-i="${i}"><span class="row-main"><b>${rangeLabel({ min: r[0], max: r[1] })}</b></span>${radio(isCur(r))}</button>`).join('')}
+      <button class="row slim" data-key="dr-custom" data-a="sheet" data-sheet="depotCustom"><span class="row-main"><b>Eigener Bereich</b><small>${custom ? rangeLabel(cur) : 'Von – bis frei festlegen'}</small></span>${radio(custom)}</button>
+      ${cur ? `<div class="btn-line"><button class="chip" data-a="depotReroll">${ICON.g_dice} Neuer Wert im Bereich</button></div>` : ''}
+      <div class="sec"><h2>Daten</h2><span class="sec-btn">Seed ${S.seed}</span></div>
+      ${navRow('g_dice', 'Neue Zufallsdaten', 'Namen, Beträge und Umsätze neu würfeln', 'reroll')}
+      ${navRow('g_reset', 'Ohne Unterkonten starten', 'Zeigt den Einstieg ins neue Feature', 'rerollEmpty')}
+      ${navRow('g_card', 'Kartenzahlung simulieren', 'Bucht vom verknüpften Konto ab', 'simulatePay')}
+      <p class="legal">Der Depotwert-Bereich bleibt gespeichert und gilt auch für neue Zufallsdaten.</p>`;
+  },
+};
+
+SHEETS.depotCustom = {
+  html(p) {
+    return `${shTitle('Eigener Bereich', 'Der Depotwert wird zufällig in diesem Bereich gewählt. Gleiche Werte ergeben einen festen Betrag.')}
+      <div class="gap"></div>
+      <label class="field"><span>Von (€)</span><input data-f="min" inputmode="decimal" placeholder="z. B. 20000" autocomplete="off" enterkeyhint="next"></label>
+      <div class="gap small"></div>
+      <label class="field"><span>Bis (€)</span><input data-f="max" inputmode="decimal" placeholder="z. B. 80000" autocomplete="off" enterkeyhint="done"></label>`;
+  },
+  bottom(p) {
+    const r = customRange(p);
+    return `${r.error ? `<p class="amt-hint bad">${r.error}</p>` : ''}<button class="cta" data-a="depotCustomSave" ${r.ok ? '' : 'disabled'}>Übernehmen</button>`;
+  },
+};
+
+function customRange(p) {
+  const parse = (v) => (v ? parseFloat(String(v).replace(/\./g, '').replace(',', '.')) : NaN);
+  const min = parse(p.min);
+  const max = p.max ? parse(p.max) : min;
+  if (!(min > 0)) return { ok: false, error: p.min ? 'Bitte einen Betrag größer 0 eingeben.' : '' };
+  if (!(max >= min)) return { ok: false, error: '„Bis“ muss mindestens so groß sein wie „Von“.' };
+  if (max > 1e8) return { ok: false, error: 'Höchstens 100 Mio. €.' };
+  return { ok: true, min: round2(min), max: round2(max) };
+}
+
 
 /* ---------- Rendering ---------- */
 
@@ -3291,7 +3434,48 @@ function pulse(sheet, sel) {
 
 const LS_ABS = 'cash-unterkonten-abs';
 
+let secretTaps = [];
+function openDemoMenu() {
+  if (ui.sheets.some((s) => s.type === 'demo')) return;
+  try {
+    if (navigator.vibrate) navigator.vibrate(12);
+  } catch (e) {
+    /* ignore */
+  }
+  openSheet('demo');
+}
+
 const ACTIONS = {
+  /** Verstecktes Demo-Menü: 5× schnell auf den Namen im Profil tippen (oder lange drücken). */
+  secretTap() {
+    const now = Date.now();
+    secretTaps = secretTaps.filter((t) => now - t < 2500).concat(now);
+    if (secretTaps.length >= 5) {
+      secretTaps = [];
+      openDemoMenu();
+    }
+  },
+  depotRange(d) {
+    const i = +d.i;
+    const r = i < 0 ? null : { min: DEPOT_RANGES[i][0], max: DEPOT_RANGES[i][1], salt: 0 };
+    setDepotRange(r);
+    render();
+    toast('Depotwert: ' + eur(pfValue('brokerage')));
+  },
+  depotReroll() {
+    const cur = S.depotRange;
+    if (!cur) return;
+    setDepotRange({ min: cur.min, max: cur.max, salt: (cur.salt || 0) + 1 });
+    render();
+    toast('Depotwert: ' + eur(pfValue('brokerage')));
+  },
+  depotCustomSave(d, sheet) {
+    const r = customRange(sheet.p);
+    if (!r.ok) return;
+    setDepotRange({ min: r.min, max: r.max, salt: 0 });
+    closeSheet(sheet);
+    toast('Depotwert: ' + eur(pfValue('brokerage')));
+  },
   /** Tippen auf eine Veränderung schaltet überall zwischen Prozent und absoluten €-Werten um. */
   toggleAbs() {
     ui.abs = !ui.abs;
@@ -3703,6 +3887,35 @@ function bindEvents() {
   });
   app.addEventListener('animationend', (e) => {
     if (e.animationName === 'mIn') e.target.classList.remove('m-in');
+  });
+
+  /* Verstecktes Demo-Menü: langes Drücken auf den Namen im Profil */
+  let press = null;
+  const cancelPress = () => {
+    if (press) clearTimeout(press.timer);
+    press = null;
+  };
+  app.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest('[data-secret]');
+    if (!el) return;
+    cancelPress();
+    press = {
+      x: e.clientX,
+      y: e.clientY,
+      timer: setTimeout(() => {
+        press = null;
+        secretTaps = [];
+        suppressClickUntil = Date.now() + 450;
+        openDemoMenu();
+      }, 650),
+    };
+  });
+  app.addEventListener('pointermove', (e) => {
+    if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) cancelPress();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => app.addEventListener(t, cancelPress));
+  app.addEventListener('contextmenu', (e) => {
+    if (e.target.closest('[data-secret]')) e.preventDefault();
   });
 
   /* Sheet nach unten wegziehen */

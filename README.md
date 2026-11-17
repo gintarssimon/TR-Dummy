@@ -15,8 +15,9 @@ Alle Namen, Beträge, Kurse und IBANs sind zufällig erzeugt. Es gibt kein Login
 ## Zufallsdaten
 
 - Beim ersten Öffnen wird ein Datensatz gewürfelt und im Browser gespeichert, damit er während der Präsentation stabil bleibt.
-- **Profil (Avatar oben rechts) → Demo → „Neue Zufallsdaten“** würfelt neu.
-- **„Ohne Unterkonten starten“** zeigt den Einstieg ins Feature (nur Hauptkonto + Hinweiskarte).
+- Die Demo-Steuerung ist **versteckt**, damit das Profil wie in der echten App aussieht: Im Profil (Avatar oben rechts) **lange auf den eigenen Namen drücken** oder **5× schnell darauf tippen**. Dort gibt es:
+  - **Depotwert:** Bereich wählen (100 € – 1.000 € bis 1 – 10 Mio. €) oder einen eigenen Von–bis-Bereich eingeben; gleiche Werte ergeben einen festen Betrag. Die Positionen werden passend neu zusammengestellt (größere Depots haben mehr Titel), der Sparplan wird mitskaliert. „Neuer Wert im Bereich“ würfelt einen anderen Betrag. Die Wahl bleibt gespeichert und gilt auch für neue Zufallsdaten.
+  - **Neue Zufallsdaten**, **Ohne Unterkonten starten** (Einstieg ins Feature: nur Hauptkonto + Hinweiskarte) und **Kartenzahlung simulieren**.
 - Mit `index.html?seed=1234` lässt sich ein fester Datensatz erzwingen (gleicher Seed = gleiche Namen und Zahlen).
 
 ## Das Feature: Unterkonten
@@ -36,7 +37,7 @@ Der Rest der App ist ebenfalls klickbar, damit der Kontext stimmt: Ladescreen, P
 
 ### Vorschlag für den Ablauf einer Demo
 
-1. Profil → „Ohne Unterkonten starten“ → Cash zeigt die Hinweiskarte.
+1. Profil → Name lange drücken → „Ohne Unterkonten starten“ → Cash zeigt die Hinweiskarte.
 2. Unterkonto eröffnen (z. B. „Urlaub“), Sparziel setzen, Geld umbuchen.
 3. Monatliche Regel anlegen → erscheint unter „Demnächst“.
 4. Karte → Aufrunden aktivieren → „Kartenzahlung simulieren“.
@@ -49,6 +50,10 @@ Der Rest der App ist ebenfalls klickbar, damit der Kontext stimmt: Ladescreen, P
 - Unterkonten haben schlichte Symbole im selben Schwarz-Weiß-Stil wie die übrigen Icons (keine Emojis, keine Farben).
 - Kennzahlen, Nachrichten und Termine in der Einzelwert-Ansicht sind Platzhalter und frei erfunden; nur die Kurzbeschreibungen der Unternehmen sind allgemein gehalten und sachlich.
 - Schrift: [Inter](https://rsms.me/inter/) (SIL Open Font License), als Datei eingebettet, damit die App auf jedem Gerät gleich aussieht.
+
+## Logo
+
+Ladescreen und Karte zeigen die Original-Wortmarke von der Trade-Republic-Website (als SVG-Symbol in `src/index.html`). Die Marke gehört der Trade Republic Bank GmbH; sie wird hier nur im privaten Konzept-Prototyp verwendet.
 
 ## Prozent oder Euro
 
